@@ -9,12 +9,13 @@ using System.Runtime.InteropServices;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Windows.Forms.VisualStyles;
 
 namespace RapidFireKeys
 {
     public partial class Form1 : Form
     {
-        static String version = "1.0.0";
+        static String version = "1.0.1";
 
         // Import user32.dll methods for interacting with Windows
         [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
@@ -269,6 +270,7 @@ namespace RapidFireKeys
                                         {
                                             state.IsHeld = false;
                                             state.IsRepeating = false;
+                                            Thread.Sleep(10);
                                             continue;
                                         }
 
@@ -339,7 +341,9 @@ namespace RapidFireKeys
                 Move = 0x00000001,
                 Absolute = 0x00008000,
                 RightDown = 0x00000008,
-                RightUp = 0x00000010
+                RightUp = 0x00000010,
+                XDown = 0x00000080,
+                XUp = 0x00000100,
             }
 
             [DllImport("user32.dll", EntryPoint = "SetCursorPos")]
@@ -380,8 +384,19 @@ namespace RapidFireKeys
                      position.X,
                      position.Y,
                      0,
-                     0)
-                    ;
+                     0);
+            }
+
+            public static void MouseEvent(MouseEventFlags value, int xButton)
+            {
+                MousePoint position = GetCursorPosition();
+
+                mouse_event
+                    ((int)value,
+                     position.X,
+                     position.Y,
+                     xButton,
+                     0);
             }
 
             [StructLayout(LayoutKind.Sequential)]
@@ -462,6 +477,8 @@ namespace RapidFireKeys
         {
             MouseOperations.MouseEventFlags downFlag, upFlag;
 
+            int xButton = 0;
+
             switch (mouseButton)
             {
                 case Keys.LButton:
@@ -476,12 +493,22 @@ namespace RapidFireKeys
                     downFlag = MouseOperations.MouseEventFlags.MiddleDown;
                     upFlag = MouseOperations.MouseEventFlags.MiddleUp;
                     break;
+                case Keys.XButton1:
+                    downFlag = MouseOperations.MouseEventFlags.XDown;
+                    upFlag = MouseOperations.MouseEventFlags.XUp;
+                    xButton = 1;
+                    break;
+                case Keys.XButton2:
+                    downFlag = MouseOperations.MouseEventFlags.XDown;
+                    upFlag = MouseOperations.MouseEventFlags.XUp;
+                    xButton = 2;
+                    break;
                 default:
                     Console.WriteLine($"Unsupported mouse button: {mouseButton}");
                     return;
             }
 
-            MouseOperations.MouseEvent(downFlag);
+            MouseOperations.MouseEvent(downFlag, xButton);
         }
 
         static void SendKeyboardPress(Keys key)
