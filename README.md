@@ -1,16 +1,17 @@
 # RapidFireKeys
 System tray application built in C# to rapidly fire specific keys for specific applications when the keys are held down.
 
+This was primarily designed for Diablo II Resurrected to correct a gameplay issue with how holding down a button to cast skills while hovering over an item or object causes the skill to stop casting, forcing the player to instead button-mash the buttons to make sure their skills keep casting. This app will do the button mashing for you so you can just keep the button held down and give your fingers a break.
+
 ### 🔽 Pre-Compiled .zip Download
 
 [Download RapidFireKeys v1.0.0](https://github.com/levinium/RapidFireKeys/releases/download/v1.0.0/RapidFireKeys.zip)
 
+Simply unzip this somewhere and run RapidFireKeys.exe to open the system tray app.
 
+The provided CONFIG.json is set up to work with Diablo 2 Resurrected (D2R.exe) with some basic skill hotkeys. To edit the config file, see the guide below
 
-Note: RapidFireKeys launches in the system tray and can be managed from there.
-
-
-GUIDE:
+### GUIDE:
 
 To customize what applications RapidFireKeys works for and what hotkeys are rapid-fired, edit the CONFIG.json file located in the RapidFireKeys.exe directory.
 
@@ -57,3 +58,6 @@ A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z,
 LWin, RWin, Apps, Numpad0, Numpad1, Numpad2, Numpad3, Numpad4, Numpad5, Numpad6, Numpad7, Numpad8, Numpad9,
 F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12,
 ```
+
+### WARNING:
+Some online games may have detection of "auto presses" and ban people for "macroing" for positive detections. I'm not sure whether or not this is something that may be detectable, but use this at your own risk. I've been using it for a while now online in Diablo II Resurrected without issues, but I cannot guarantee that Blizzard or another company won't randomly decide to ban someone over something like this.
