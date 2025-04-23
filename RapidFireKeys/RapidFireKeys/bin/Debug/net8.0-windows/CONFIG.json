@@ -1,0 +1,21 @@
+{
+    "D2R.exe": [
+        { "key": "LButton", "modifiers": ["Shift"] },
+        { "key": "RButton" },
+        { "key": "MButton"},
+        { "key": "XButton1"},
+        { "key": "XButton2"},
+        { "key": "Back"},
+        { "key": "Q" },
+        { "key": "W" },
+        { "key": "E" },
+        { "key": "R" },
+        { "key": "A" },
+        { "key": "S" },
+        { "key": "D" },
+        { "key": "F" },
+        { "key": "G" },
+        { "key": "H" },
+        { "key": "B" }
+    ]
+}

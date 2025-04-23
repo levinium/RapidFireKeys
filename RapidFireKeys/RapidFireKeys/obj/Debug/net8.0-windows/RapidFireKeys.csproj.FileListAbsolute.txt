@@ -1,0 +1,16 @@
+C:\Users\PC930623\source\repos\RapidFireKeys\RapidFireKeys\bin\Debug\net8.0-windows\RapidFireKeys.exe
+C:\Users\PC930623\source\repos\RapidFireKeys\RapidFireKeys\bin\Debug\net8.0-windows\RapidFireKeys.deps.json
+C:\Users\PC930623\source\repos\RapidFireKeys\RapidFireKeys\bin\Debug\net8.0-windows\RapidFireKeys.runtimeconfig.json
+C:\Users\PC930623\source\repos\RapidFireKeys\RapidFireKeys\bin\Debug\net8.0-windows\RapidFireKeys.dll
+C:\Users\PC930623\source\repos\RapidFireKeys\RapidFireKeys\bin\Debug\net8.0-windows\RapidFireKeys.pdb
+C:\Users\PC930623\source\repos\RapidFireKeys\RapidFireKeys\obj\Debug\net8.0-windows\RapidFireKeys.Form1.resources
+C:\Users\PC930623\source\repos\RapidFireKeys\RapidFireKeys\obj\Debug\net8.0-windows\RapidFireKeys.csproj.GenerateResource.cache
+C:\Users\PC930623\source\repos\RapidFireKeys\RapidFireKeys\obj\Debug\net8.0-windows\RapidFireKeys.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\PC930623\source\repos\RapidFireKeys\RapidFireKeys\obj\Debug\net8.0-windows\RapidFireKeys.AssemblyInfoInputs.cache
+C:\Users\PC930623\source\repos\RapidFireKeys\RapidFireKeys\obj\Debug\net8.0-windows\RapidFireKeys.AssemblyInfo.cs
+C:\Users\PC930623\source\repos\RapidFireKeys\RapidFireKeys\obj\Debug\net8.0-windows\RapidFireKeys.csproj.CoreCompileInputs.cache
+C:\Users\PC930623\source\repos\RapidFireKeys\RapidFireKeys\obj\Debug\net8.0-windows\RapidFireKeys.dll
+C:\Users\PC930623\source\repos\RapidFireKeys\RapidFireKeys\obj\Debug\net8.0-windows\refint\RapidFireKeys.dll
+C:\Users\PC930623\source\repos\RapidFireKeys\RapidFireKeys\obj\Debug\net8.0-windows\RapidFireKeys.pdb
+C:\Users\PC930623\source\repos\RapidFireKeys\RapidFireKeys\obj\Debug\net8.0-windows\RapidFireKeys.genruntimeconfig.cache
+C:\Users\PC930623\source\repos\RapidFireKeys\RapidFireKeys\obj\Debug\net8.0-windows\ref\RapidFireKeys.dll
