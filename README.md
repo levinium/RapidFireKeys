@@ -1,7 +1,10 @@
 # RapidFireKeys
 System tray application built in C# to rapidly fire specific keys for specific applications when the keys are held down.
 
-RapidFireKeys v1.0.0
+### 🔽 Pre-Compiled .zip Download
+
+[Download RapidFireKeys v1.0.0](https://github.com/YOUR_USERNAME/RapidFireKeys/releases/latest/download/RapidFireKeys.zip)
+
 
 Note: RapidFireKeys launches in the system tray and can be managed from there.
 
