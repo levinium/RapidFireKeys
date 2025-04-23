@@ -9,7 +9,7 @@ This was primarily designed for Diablo II Resurrected to correct a gameplay issu
 
 Simply unzip this somewhere and run RapidFireKeys.exe to open the system tray app.
 
-The provided CONFIG.json is set up to work with Diablo 2 Resurrected (D2R.exe) with some basic skill hotkeys. To edit the config file, see the guide below
+The provided CONFIG.json is set up to work with Diablo 2 Resurrected (D2R.exe) with some basic skill hotkeys. To edit the config file, see the guide below.
 
 ### GUIDE:
 
