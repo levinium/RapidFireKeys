@@ -3,7 +3,8 @@ System tray application built in C# to rapidly fire specific keys for specific a
 
 ### 🔽 Pre-Compiled .zip Download
 
-[Download RapidFireKeys v1.0.0]([https://github.com/YOUR_USERNAME/RapidFireKeys/releases/latest/download/RapidFireKeys.zip](https://github.com/levinium/RapidFireKeys/releases/download/v1.0.0/RapidFireKeys.zip))
+[Download RapidFireKeys v1.0.0](https://github.com/YOUR_USERNAME/RapidFireKeys/releases/latest/download/RapidFireKeys.zip)
+
 
 
 Note: RapidFireKeys launches in the system tray and can be managed from there.
