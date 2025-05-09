@@ -10,12 +10,14 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Windows.Forms.VisualStyles;
+using System.Text;
+using static System.Windows.Forms.AxHost;
 
 namespace RapidFireKeys
 {
     public partial class Form1 : Form
     {
-        static String version = "1.0.1";
+        static String version = "1.0.2";
 
         // Import user32.dll methods for interacting with Windows
         [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
@@ -26,12 +28,132 @@ namespace RapidFireKeys
         const int KEYEVENTF_KEYDOWN = 0x0000;
         const int KEYEVENTF_KEYUP = 0x0002;
 
+        //---- New Send Mouse Click to Window Method -----
+        [DllImport("user32.dll")]
+        static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+        [DllImport("user32.dll")]
+        static extern IntPtr PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
+        // Window message constants
+
+        const uint WM_LBUTTONDOWN = 0x0201;
+        const uint WM_LBUTTONUP = 0x0202;
+        const uint WM_RBUTTONDOWN = 0x0204;
+        const uint WM_RBUTTONUP = 0x0205;
+        const uint WM_MBUTTONDOWN = 0x0207;
+        const uint WM_MBUTTONUP = 0x0208;
+        const uint WM_XBUTTONDOWN = 0x020B;
+        const uint WM_XBUTTONUP = 0x020C;
+        const int XBUTTON1 = 0x0001;
+        const int XBUTTON2 = 0x0002;
+
+        static void SendStealthMouseClick(Keys mouseButton)
+        {
+            //IntPtr hWnd = FindWindow(null, "Diablo II: Resurrected");
+            IntPtr hWnd = GetForegroundWindow();
+            if (hWnd == IntPtr.Zero) return;
+
+            uint downMsg = 0;
+            uint upMsg = 0;
+            IntPtr wParam = IntPtr.Zero;
+            IntPtr lParam = IntPtr.Zero; // Use actual coordinates if needed
+
+            switch (mouseButton)
+            {
+                case Keys.LButton:
+                    downMsg = WM_LBUTTONDOWN;
+                    upMsg = WM_LBUTTONUP;
+                    wParam = (IntPtr)1; // MK_LBUTTON
+                    break;
+                case Keys.RButton:
+                    downMsg = WM_RBUTTONDOWN;
+                    upMsg = WM_RBUTTONUP;
+                    wParam = (IntPtr)2; // MK_RBUTTON
+                    break;
+                case Keys.MButton:
+                    downMsg = WM_MBUTTONDOWN;
+                    upMsg = WM_MBUTTONUP;
+                    wParam = (IntPtr)16; // MK_MBUTTON
+                    break;
+                case Keys.XButton1:
+                    downMsg = WM_XBUTTONDOWN;
+                    upMsg = WM_XBUTTONUP;
+                    wParam = (IntPtr)(XBUTTON1 << 16 | 0x0001);
+                    break;
+                case Keys.XButton2:
+                    downMsg = WM_XBUTTONDOWN;
+                    upMsg = WM_XBUTTONUP;
+                    wParam = (IntPtr)(XBUTTON2 << 16 | 0x0001);
+                    break;
+                default:
+                    return; // Not a mouse button
+            }
+
+            PostMessage(hWnd, downMsg, wParam, lParam);
+            Thread.Sleep(5);
+            PostMessage(hWnd, upMsg, wParam, lParam);
+        }
+
+        //---------- Send Keyboard Press to Window Method -----------
+
+        const uint WM_KEYDOWN = 0x0100;
+        const uint WM_KEYUP = 0x0101;
+        const uint WM_CHAR = 0x0102;
+        const uint WM_SYSKEYDOWN = 0x0104; // For Alt+ combinations
+        const uint WM_SYSKEYUP = 0x0105;
+
+        static void SendStealthKeyPress(Keys key, bool extendedKey = false)
+        {
+            //IntPtr hWnd = FindWindow(null, "Diablo II: Resurrected");
+            IntPtr hWnd = GetForegroundWindow();
+            if (hWnd == IntPtr.Zero) return;
+
+            ushort scanCode = (ushort)MapVirtualKey((uint)key, 0);
+            uint lParamDown, lParamUp;
+
+            // Construct lParam values (bit-packed structure)
+            lParamDown = 0x00000001 | (uint)(scanCode << 16);
+            lParamUp = 0xC0000001 | (uint)(scanCode << 16);
+
+            if (extendedKey)
+            {
+                lParamDown |= 0x01000000;
+                lParamUp |= 0x01000000;
+            }
+
+            // Send messages
+            PostMessage(hWnd, WM_KEYDOWN, (IntPtr)key, (IntPtr)lParamDown);
+            PostMessage(hWnd, WM_CHAR, (IntPtr)MapToChar(key), IntPtr.Zero);
+            PostMessage(hWnd, WM_KEYUP, (IntPtr)key, (IntPtr)lParamUp);
+        }
+
+        // Add this helper function
+        [DllImport("user32.dll")]
+        static extern uint MapVirtualKey(uint uCode, uint uMapType);
+
+        // Simple character mapping (expand as needed)
+        static char MapToChar(Keys key)
+        {
+            if (key >= Keys.A && key <= Keys.Z)
+                return (char)('A' + (key - Keys.A));
+
+            if (key >= Keys.D0 && key <= Keys.D9)
+                return (char)('0' + (key - Keys.D0));
+
+            return '\0'; // Handle special cases as needed
+        }
+
+
+
+        //-----------------------------
+
         // Data class to track key hold status
         class KeyState
         {
             public bool IsHeld = false;
             public DateTime HoldStart = DateTime.MinValue;
             public bool IsRepeating = false;
+            public DateTime LastRepeat = DateTime.MinValue;
         }
 
         // All standard virtual key codes (partial, expand as needed)
@@ -434,6 +556,30 @@ namespace RapidFireKeys
             return true;
         }
 
+        static bool IsAKeyboardKeyRecentlyRepeated()
+        {
+            foreach (var key in keyStates)
+            {
+                var lastRepeatMs = (DateTime.Now - key.Value.LastRepeat).TotalMilliseconds;
+                if (!IsMouseKey(key.Key) && key.Value.IsRepeating || lastRepeatMs < holdThresholdMs)
+                    return true;
+            }
+
+            return false;
+        }
+
+        static bool IsAMouseKeyRecentlyRepeated()
+        {
+            foreach (var key in keyStates)
+            {
+                var lastRepeatMs = (DateTime.Now - key.Value.LastRepeat).TotalMilliseconds;
+                if (IsMouseKey(key.Key) && key.Value.IsRepeating || lastRepeatMs < holdThresholdMs)
+                    return true;
+            }
+
+            return false;
+        }
+
         // Gets the name of the currently focused process
         static string GetForegroundProcessName()
         {
@@ -455,6 +601,14 @@ namespace RapidFireKeys
             await Task.Delay(holdThresholdMs);
             while (!stopCondition())
             {
+                //if (!IsMouseKey(key) && !IsAMouseKeyRecentlyRepeated())
+                //{
+                //    SendKey(key);
+                //}
+                //else if (IsMouseKey(key) && !IsAKeyboardKeyRecentlyRepeated())
+                //{
+                //    SendKey(key);
+                //}
                 SendKey(key);
                 await Task.Delay(intervalMs);
             }
@@ -465,66 +619,14 @@ namespace RapidFireKeys
         {
             if (IsMouseKey(key))
             {
-                SendMouseClick(key);
+                SendStealthMouseClick(key);
             }
             else
             {
-                SendKeyboardPress(key);
+                SendStealthKeyPress(key);
             }
-        }
-
-        static void SendMouseClick(Keys mouseButton)
-        {
-            MouseOperations.MouseEventFlags downFlag, upFlag;
-
-            int xButton = 0;
-
-            switch (mouseButton)
-            {
-                case Keys.LButton:
-                    downFlag = MouseOperations.MouseEventFlags.LeftDown;
-                    upFlag = MouseOperations.MouseEventFlags.LeftUp;
-                    break;
-                case Keys.RButton:
-                    downFlag = MouseOperations.MouseEventFlags.RightDown;
-                    upFlag = MouseOperations.MouseEventFlags.RightUp;
-                    break;
-                case Keys.MButton:
-                    downFlag = MouseOperations.MouseEventFlags.MiddleDown;
-                    upFlag = MouseOperations.MouseEventFlags.MiddleUp;
-                    break;
-                case Keys.XButton1:
-                    downFlag = MouseOperations.MouseEventFlags.XDown;
-                    upFlag = MouseOperations.MouseEventFlags.XUp;
-                    xButton = 1;
-                    break;
-                case Keys.XButton2:
-                    downFlag = MouseOperations.MouseEventFlags.XDown;
-                    upFlag = MouseOperations.MouseEventFlags.XUp;
-                    xButton = 2;
-                    break;
-                default:
-                    Console.WriteLine($"Unsupported mouse button: {mouseButton}");
-                    return;
-            }
-
-            MouseOperations.MouseEvent(downFlag, xButton);
-        }
-
-        static void SendKeyboardPress(Keys key)
-        {
-            //Check if it is a valid key
-            if (!Enum.IsDefined(typeof(Keys), key))
-            {
-                Console.WriteLine($"Unsupported keyboard key: {key}");
-                return;
-            }
-            // Regular keyboard input
-            keybd_event((byte)key, 0, KEYEVENTF_KEYDOWN, 0);
-            keybd_event((byte)key, 0, KEYEVENTF_KEYUP, 0);
-            Thread.Sleep(repeatIntervalMs);
-            keybd_event((byte)key, 0, KEYEVENTF_KEYDOWN, 0);
-            keybd_event((byte)key, 0, KEYEVENTF_KEYUP, 0);
+            KeyState state = keyStates[key];
+            state.LastRepeat = DateTime.Now;
         }
 
         static bool IsMouseKey(Keys key)
