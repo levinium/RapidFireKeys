@@ -5,7 +5,7 @@ This was primarily designed for Diablo II Resurrected to correct a gameplay issu
 
 ### 🔽 Pre-Compiled .zip Download
 
-[Download RapidFireKeys v1.0.1](https://github.com/levinium/RapidFireKeys/releases/download/v1.0.1/RapidFireKeys.zip)
+[Download RapidFireKeys v1.0.2](https://github.com/levinium/RapidFireKeys/releases/download/v1.0.2/RapidFireKeys.zip)
 
 Simply unzip this somewhere and run RapidFireKeys.exe to open the system tray app.
 
