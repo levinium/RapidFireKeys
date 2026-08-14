@@ -5,9 +5,13 @@ This was primarily designed for Diablo II Resurrected to correct a gameplay issu
 
 ### 🔽 Pre-Compiled .zip Download
 
-[Download RapidFireKeys v1.0.2](https://github.com/levinium/RapidFireKeys/releases/download/v1.0.2/RapidFireKeys.zip)
+[Download RapidFireKeys v1.0.3](https://github.com/levinium/RapidFireKeys/releases/download/v1.0.3/RapidFireKeys.zip)
 
 Simply unzip this somewhere and run RapidFireKeys.exe to open the system tray app.
+
+As of v1.0.3, RapidFireKeys always requests administrator privileges, so Windows will show a UAC prompt when you launch it. This is required for the rapid-fired keys to reach applications that are themselves running elevated — Windows blocks synthesized input from a normal process to an elevated one. You no longer need to right-click and pick "Run as administrator".
+
+If you would rather not confirm UAC every launch, create a Task Scheduler task for RapidFireKeys.exe with "Run with highest privileges" checked and launch the app from that task (for example via a shortcut to `schtasks /run /tn RapidFireKeys`).
 
 The provided CONFIG.json is set up to work with Diablo 2 Resurrected (D2R.exe) with some basic skill hotkeys. To edit the config file, see the guide below.
 

@@ -17,7 +17,7 @@ namespace RapidFireKeys
 {
     public partial class Form1 : Form
     {
-        static String version = "1.0.2";
+        static String version = "1.0.3";
 
         // Import user32.dll methods for interacting with Windows
         [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
