@@ -3,17 +3,17 @@ System tray application built in C# to rapidly fire specific keys for specific a
 
 This was primarily designed for Diablo II Resurrected to correct a gameplay issue with how holding down a button to cast skills while hovering over an item or object causes the skill to stop casting, forcing the player to instead button-mash the buttons to make sure their skills keep casting. This app will do the button mashing for you so you can just keep the button held down and give your fingers a break.
 
-### 🔽 Pre-Compiled .zip Download
+### 🔽 Download
 
-[Download RapidFireKeys v1.0.3](https://github.com/levinium/RapidFireKeys/releases/download/v1.0.3/RapidFireKeys.zip)
+[Download RapidFireKeys v1.0.4](https://github.com/levinium/RapidFireKeys/releases/download/v1.0.4/RapidFireKeys.exe)
 
-Simply unzip this somewhere and run RapidFireKeys.exe to open the system tray app.
+As of v1.0.4, RapidFireKeys is a single self-contained .exe, so nothing else needs to be installed (the .NET runtime is built in). Put RapidFireKeys.exe in its own folder and run it to open the system tray app. On first launch it creates a CONFIG.json next to the exe.
 
 As of v1.0.3, RapidFireKeys always requests administrator privileges, so Windows will show a UAC prompt when you launch it. This is required for the rapid-fired keys to reach applications that are themselves running elevated — Windows blocks synthesized input from a normal process to an elevated one. You no longer need to right-click and pick "Run as administrator".
 
 If you would rather not confirm UAC every launch, create a Task Scheduler task for RapidFireKeys.exe with "Run with highest privileges" checked and launch the app from that task (for example via a shortcut to `schtasks /run /tn RapidFireKeys`).
 
-The provided CONFIG.json is set up to work with Diablo 2 Resurrected (D2R.exe) with some basic skill hotkeys. To edit the config file, see the guide below.
+The default CONFIG.json is set up to work with Diablo 2 Resurrected (D2R.exe) with some basic skill hotkeys. To edit the config file, see the guide below.
 
 ### GUIDE:
 

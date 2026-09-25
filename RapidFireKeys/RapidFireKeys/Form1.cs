@@ -17,7 +17,34 @@ namespace RapidFireKeys
 {
     public partial class Form1 : Form
     {
-        static String version = "1.0.3";
+        static String version = "1.0.4";
+
+        // CONFIG.json lives next to the exe. Written out on first run if missing.
+        static readonly string configPath = Path.Combine(AppContext.BaseDirectory, "CONFIG.json");
+
+        const string defaultConfig = """
+            {
+                "D2R.exe": [
+                    { "key": "LButton", "modifiers": ["Shift"] },
+                    { "key": "RButton" },
+                    { "key": "MButton"},
+                    { "key": "XButton1"},
+                    { "key": "XButton2"},
+                    { "key": "Back"},
+                    { "key": "Q" },
+                    { "key": "W" },
+                    { "key": "E" },
+                    { "key": "R" },
+                    { "key": "A" },
+                    { "key": "S" },
+                    { "key": "D" },
+                    { "key": "F" },
+                    { "key": "G" },
+                    { "key": "H" },
+                    { "key": "B" }
+                ]
+            }
+            """;
 
         // Import user32.dll methods for interacting with Windows
         [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
@@ -47,7 +74,7 @@ namespace RapidFireKeys
         const int XBUTTON1 = 0x0001;
         const int XBUTTON2 = 0x0002;
 
-        static void SendStealthMouseClick(Keys mouseButton)
+        static async Task SendStealthMouseClick(Keys mouseButton, int holdMs)
         {
             //IntPtr hWnd = FindWindow(null, "Diablo II: Resurrected");
             IntPtr hWnd = GetForegroundWindow();
@@ -90,7 +117,7 @@ namespace RapidFireKeys
             }
 
             PostMessage(hWnd, downMsg, wParam, lParam);
-            Thread.Sleep(5);
+            await Task.Delay(holdMs);
             PostMessage(hWnd, upMsg, wParam, lParam);
         }
 
@@ -102,7 +129,7 @@ namespace RapidFireKeys
         const uint WM_SYSKEYDOWN = 0x0104; // For Alt+ combinations
         const uint WM_SYSKEYUP = 0x0105;
 
-        static void SendStealthKeyPress(Keys key, bool extendedKey = false)
+        static async Task SendStealthKeyPress(Keys key, int holdMs, bool extendedKey = false)
         {
             //IntPtr hWnd = FindWindow(null, "Diablo II: Resurrected");
             IntPtr hWnd = GetForegroundWindow();
@@ -121,9 +148,12 @@ namespace RapidFireKeys
                 lParamUp |= 0x01000000;
             }
 
-            // Send messages
+            // Send messages. D2R samples key state once per frame, so a down and up
+            // posted back-to-back land in the same frame and the press is never seen.
+            // Hold the key long enough to span at least one frame.
             PostMessage(hWnd, WM_KEYDOWN, (IntPtr)key, (IntPtr)lParamDown);
             PostMessage(hWnd, WM_CHAR, (IntPtr)MapToChar(key), IntPtr.Zero);
+            await Task.Delay(holdMs);
             PostMessage(hWnd, WM_KEYUP, (IntPtr)key, (IntPtr)lParamUp);
         }
 
@@ -223,13 +253,20 @@ namespace RapidFireKeys
             trayIcon = new NotifyIcon()
             {
                 //Icon = SystemIcons.Application, // You can use your own .ico file here
-                Icon = new Icon("rapidfire-icon.ico"),
+                Icon = LoadTrayIcon(),
                 Text = "RapidFireKeys",
                 ContextMenuStrip = trayMenu,
                 Visible = true
             };
 
             trayIcon.MouseDoubleClick += TrayIcon_DoubleClick;
+        }
+
+        // The icon is embedded in the exe so the app runs as a single file
+        static Icon LoadTrayIcon()
+        {
+            using var stream = typeof(Form1).Assembly.GetManifestResourceStream("rapidfire-icon.ico");
+            return stream != null ? new Icon(stream) : SystemIcons.Application;
         }
 
         private void EnableDisableToggle(object sender, EventArgs e)
@@ -269,15 +306,20 @@ namespace RapidFireKeys
 
         private void LoadConfig()
         {
-            string jsonPath = "CONFIG.json";
-
-            if (!File.Exists(jsonPath))
+            if (!File.Exists(configPath))
             {
-                Console.WriteLine("JSON file not found.");
-                return;
+                try
+                {
+                    File.WriteAllText(configPath, defaultConfig);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Could not create {configPath}: {ex.Message}");
+                    return;
+                }
             }
 
-            string json = File.ReadAllText(jsonPath);
+            string json = File.ReadAllText(configPath);
             var bindings = JsonSerializer.Deserialize<Dictionary<string, List<KeyBinding>>>(json);
 
             foreach (var process in bindings)
@@ -609,21 +651,24 @@ namespace RapidFireKeys
                 //{
                 //    SendKey(key);
                 //}
-                SendKey(key);
-                await Task.Delay(intervalMs);
+                // Split each interval evenly between holding the key down and releasing
+                // it, so the game sees both states and the repeat rate stays the same.
+                int holdMs = intervalMs / 2;
+                await SendKey(key, holdMs);
+                await Task.Delay(intervalMs - holdMs);
             }
         }
 
         // Sends a single press of the given key
-        static void SendKey(Keys key)
+        static async Task SendKey(Keys key, int holdMs)
         {
             if (IsMouseKey(key))
             {
-                SendStealthMouseClick(key);
+                await SendStealthMouseClick(key, holdMs);
             }
             else
             {
-                SendStealthKeyPress(key);
+                await SendStealthKeyPress(key, holdMs);
             }
             KeyState state = keyStates[key];
             state.LastRepeat = DateTime.Now;

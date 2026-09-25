@@ -8,7 +8,16 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon>rapidfire-icon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Version>1.0.3</Version>
+    <Version>1.0.4</Version>
+  </PropertyGroup>
+
+  <!-- Release builds ship as one self-contained exe with the .NET runtime built in -->
+  <PropertyGroup>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,7 +26,7 @@
 
   <ItemGroup>
     <Content Include="Assets\rapidfire-icon.ico" />
-    <Content Include="rapidfire-icon.ico" />
+    <EmbeddedResource Include="rapidfire-icon.ico" LogicalName="rapidfire-icon.ico" />
   </ItemGroup>
 
   <ItemGroup>
