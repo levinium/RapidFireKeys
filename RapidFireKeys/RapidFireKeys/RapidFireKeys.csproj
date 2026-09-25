@@ -8,7 +8,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon>rapidfire-icon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Version>1.0.4</Version>
+    <Version>1.0.5</Version>
   </PropertyGroup>
 
   <!-- Release builds ship as one self-contained exe with the .NET runtime built in -->
@@ -44,4 +44,4 @@
     </EmbeddedResource>
   </ItemGroup>
 
-</Project>
+</Project>

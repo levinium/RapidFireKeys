@@ -5,9 +5,11 @@ This was primarily designed for Diablo II Resurrected to correct a gameplay issu
 
 ### 🔽 Download
 
-[Download RapidFireKeys v1.0.4](https://github.com/levinium/RapidFireKeys/releases/download/v1.0.4/RapidFireKeys.exe)
+[Download RapidFireKeys v1.0.5](https://github.com/levinium/RapidFireKeys/releases/download/v1.0.5/RapidFireKeys.exe)
 
 As of v1.0.4, RapidFireKeys is a single self-contained .exe, so nothing else needs to be installed (the .NET runtime is built in). Put RapidFireKeys.exe in its own folder and run it to open the system tray app. On first launch it creates a CONFIG.json next to the exe.
+
+RapidFireKeys only rapid-fires keys you are physically holding. Keys pressed by other software (automation tools, macros) are ignored. It also writes a RapidFireKeys.log next to the exe that records when each rapid-fire starts and stops, which helps track down a misfire.
 
 As of v1.0.3, RapidFireKeys always requests administrator privileges, so Windows will show a UAC prompt when you launch it. This is required for the rapid-fired keys to reach applications that are themselves running elevated — Windows blocks synthesized input from a normal process to an elevated one. You no longer need to right-click and pick "Run as administrator".
 

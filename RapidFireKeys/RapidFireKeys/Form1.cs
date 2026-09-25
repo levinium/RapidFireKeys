@@ -17,7 +17,7 @@ namespace RapidFireKeys
 {
     public partial class Form1 : Form
     {
-        static String version = "1.0.4";
+        static String version = "1.0.5";
 
         // CONFIG.json lives next to the exe. Written out on first run if missing.
         static readonly string configPath = Path.Combine(AppContext.BaseDirectory, "CONFIG.json");
@@ -232,6 +232,8 @@ namespace RapidFireKeys
         {
             InitializeComponent();
             InitializeTrayIcon();
+            Log.Write($"RapidFireKeys v{version} started");
+            PhysicalInput.Start();
             StartBackgroundTask();
         }
 
@@ -439,7 +441,22 @@ namespace RapidFireKeys
                                         }
 
                                         state.IsRepeating = true;
-                                        _ = StartRepeatingKey(key, repeatIntervalMs, () => !IsKeyDown(key) || GetKeyBindingsForProcess(GetForegroundProcessName()) == null || !AreModifiersDown(modifiers));
+
+                                        // Stop if the user switches windows, even to another instance of
+                                        // the same game, so repeats never carry over into a different window
+                                        IntPtr startWindow = GetForegroundWindow();
+                                        Log.Write($"Repeat {key} started in {activeProcess} (window {startWindow})");
+                                        _ = StartRepeatingKey(key, repeatIntervalMs, () =>
+                                        {
+                                            string? reason =
+                                                !IsKeyDown(key) ? "released" :
+                                                GetForegroundWindow() != startWindow ? "window changed" :
+                                                !AreModifiersDown(modifiers) ? "modifier released" :
+                                                disabled ? "disabled" : null;
+                                            if (reason != null)
+                                                Log.Write($"Repeat {key} stopped: {reason}");
+                                            return reason != null;
+                                        });
                                     }
                                 }
                             }
@@ -577,10 +594,33 @@ namespace RapidFireKeys
             }
         }
 
-        // Checks if the key is currently down
+        // Keys Windows reports as down that the user is not physically holding,
+        // tracked so each one is logged once rather than every poll
+        static readonly HashSet<Keys> phantomKeys = new();
+
+        // Checks if the key is currently down. Both sources must agree: GetAsyncKeyState
+        // also counts keys pressed by other software and can be left stuck "down", which
+        // made keys rapid-fire with nothing held; the hooks only see real input.
         static bool IsKeyDown(Keys key)
         {
-            return (GetAsyncKeyState((int)key) & 0x8000) != 0;
+            bool reported = (GetAsyncKeyState((int)key) & 0x8000) != 0;
+            if (!PhysicalInput.Started)
+                return reported;
+
+            bool physical = PhysicalInput.IsDown((int)key);
+            lock (phantomKeys)
+            {
+                if (reported && !physical)
+                {
+                    if (phantomKeys.Add(key))
+                        Log.Write($"Ignoring {key}: Windows reports it held but it is not physically pressed");
+                }
+                else if (phantomKeys.Remove(key))
+                {
+                    Log.Write($"{key} no longer reported as phantom-held");
+                }
+            }
+            return reported && physical;
         }
 
         // Checks if any of the modifier keys are currently down
