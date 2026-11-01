@@ -18,7 +18,7 @@ the key down and it keeps firing until you let go.
 
 ## Download
 
-**[Download RapidFireKeys.exe](https://github.com/levinium/RapidFireKeys/releases/latest/download/RapidFireKeys.exe)** (about 70 MB)
+**[Download RapidFireKeys.exe](https://github.com/levinium/RapidFireKeys/releases/latest/download/RapidFireKeys.exe)** (latest release, 69 MB)
 
 Put `RapidFireKeys.exe` in a folder of its own and run it. That is the whole
 installation: it is a single self-contained file with the .NET runtime built in,
@@ -57,6 +57,8 @@ as much.
 
 ## Getting started
 
+![The tray menu](docs/screenshots/tray-menu.png)
+
 1. Run `RapidFireKeys.exe` and accept the UAC prompt. A flame icon appears in
    the system tray.
 2. That's it for D2R: it comes set up for `D2R.exe` with the usual skill keys
@@ -89,7 +91,8 @@ right.
   [Your settings](#your-settings-and-moving-them)).
 
 Nothing changes until you press **Save**, and saving takes effect immediately —
-no restart. **Cancel** discards everything since the window opened. A key that is held at the moment you remove it stops firing.
+no restart. **Cancel** discards everything since the window opened. A key that
+is held at the moment you remove it stops firing.
 
 Supported keys are the mouse buttons (left, right, middle, back, forward),
 letters, the number row, the numpad, F1–F12, arrows, Space, Enter, Tab,
@@ -164,6 +167,12 @@ Settings window is the place to change it.
 Upgrading from 1.0.x? On first run, 1.1.0 imports the `CONFIG.json` next to
 the exe automatically. That file is left where it is but no longer used.
 
+## Removing it
+
+Choose **Exit** from the tray menu, delete `RapidFireKeys.exe`, and delete
+`%AppData%\RapidFireKeys` if you don't want to keep your settings. Nothing was
+installed anywhere else: no registry entries, no services, no startup items.
+
 ## A word of warning
 
 Some online games detect "auto presses" and ban players for macroing. Whether
@@ -185,7 +194,7 @@ Needs the .NET 8 SDK.
 
 ```powershell
 dotnet build RapidFireKeys\RapidFireKeys.sln -c Release
-dotnet test  RapidFireKeys\RapidFireKeys.sln -c Release
+dotnet test  RapidFireKeys\RapidFireKeys.sln -c Release   # 106 tests
 ```
 
 The tests cover the parts that fail quietly rather than loudly: reading
@@ -233,9 +242,28 @@ RapidFireKeys\
 └── RapidFireKeys.Tests\
 ```
 
+The core is one loop: every 10 ms it checks which app is in front, and for each
+of that app's hotkeys whether the key is held. A key counts as held only when
+Windows reports it down **and** the low-level hooks in `PhysicalInput` saw a
+physical press, which is what keeps keys sent by other software from setting it
+off. Once a key has been held for about 200 ms it is re-sent every 50 ms, half down
+and half up, posted straight to the foreground window, until it is released,
+its modifier is let go, or the window changes.
+
+Hotkeys reach that loop as one compiled snapshot that Settings swaps in whole on
+Save, so the loop never sees half of an edit.
+
 ## Version history
 
 See [CHANGELOG.md](CHANGELOG.md).
+
+## Third-party components
+
+| Component | License | Used for |
+| --- | --- | --- |
+| .NET 8 / Windows Forms | MIT | the app itself, bundled into the single exe |
+| [xUnit](https://xunit.net) | Apache 2.0 | tests only |
+| [Shouldly](https://github.com/shouldly/shouldly) | BSD-3-Clause | tests only |
 
 Diablo II: Resurrected is a trademark of Blizzard Entertainment. This is an
 unofficial tool and is not affiliated with or endorsed by Blizzard.
