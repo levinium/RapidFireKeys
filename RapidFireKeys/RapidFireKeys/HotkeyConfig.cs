@@ -1,10 +1,9 @@
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace RapidFireKeys
 {
-    // One key to rapid-fire, as written in CONFIG.json
+    // One key to rapid-fire, as saved in the settings file
     internal sealed class KeyBinding
     {
         [JsonPropertyName("key")]
@@ -14,16 +13,11 @@ namespace RapidFireKeys
         public List<string>? Modifiers { get; set; }
     }
 
-    // CONFIG.json: which keys rapid-fire in which apps.
-    //
-    // The Settings window edits this file rather than replacing it with a new format,
-    // so a config written by hand for an older version keeps working, and anyone who
-    // still prefers editing it by hand can.
+    // Which keys rapid-fire in which apps, in the shape CONFIG.json had before
+    // 1.1.0 and the settings file's "hotkeys" entry has now: app .exe name to a
+    // list of keys. Reading stays lenient, since old configs were written by hand.
     internal static class HotkeyConfig
     {
-        // CONFIG.json lives next to the exe. Written out on first run if missing.
-        public static readonly string FilePath = Path.Combine(AppContext.BaseDirectory, "CONFIG.json");
-
         public const string DefaultJson = """
             {
                 "D2R.exe": [
@@ -48,7 +42,7 @@ namespace RapidFireKeys
             }
             """;
 
-        // Hand-edited configs are forgiving: the README's own example once had a
+        // Hand-written configs are forgiving: the README's own example once had a
         // trailing comma, and a comment is a natural thing to leave in a config.
         static readonly JsonSerializerOptions readOptions = new()
         {
@@ -63,73 +57,19 @@ namespace RapidFireKeys
         public static Dictionary<string, List<KeyBinding>> Parse(string json)
         {
             var parsed = JsonSerializer.Deserialize<Dictionary<string, List<KeyBinding>?>>(json, readOptions)
-                ?? throw new JsonException("CONFIG.json is empty.");
+                ?? throw new JsonException("The hotkey list is empty.");
+            return Clean(parsed);
+        }
 
+        // Drops the nulls a hand-written file can contain ("D2R.exe": null, or a
+        // stray null in a key list), so nothing downstream has to expect them
+        public static Dictionary<string, List<KeyBinding>> Clean(Dictionary<string, List<KeyBinding>?>? bindings)
+        {
             var result = new Dictionary<string, List<KeyBinding>>();
-            foreach (var (process, bindings) in parsed)
-                result[process] = bindings?.Where(b => b != null).ToList() ?? new();
+            foreach (var (process, list) in bindings ?? new())
+                result[process] = list?.Where(b => b != null).ToList() ?? new();
             return result;
         }
-
-        // Reads CONFIG.json, creating it with the defaults on first run.
-        // Error is null on success; on failure Bindings is empty and Error says why.
-        public static (Dictionary<string, List<KeyBinding>> Bindings, string? Error) Load()
-        {
-            try
-            {
-                if (!File.Exists(FilePath))
-                    File.WriteAllText(FilePath, DefaultJson);
-
-                return (Parse(File.ReadAllText(FilePath)), null);
-            }
-            catch (Exception ex)
-            {
-                return (new(), ex.Message);
-            }
-        }
-
-        // Writes to a temporary file first, so a failed save never leaves a
-        // half-written CONFIG.json behind
-        public static void Save(Dictionary<string, List<KeyBinding>> bindings)
-        {
-            string temp = FilePath + ".tmp";
-            File.WriteAllText(temp, Serialize(bindings));
-            File.Move(temp, FilePath, overwrite: true);
-        }
-
-        // Laid out one binding per line, like the default, so the file stays easy
-        // to read and edit by hand
-        public static string Serialize(Dictionary<string, List<KeyBinding>> bindings)
-        {
-            var sb = new StringBuilder();
-            sb.Append("{\n");
-
-            int processIndex = 0;
-            foreach (var (process, list) in bindings)
-            {
-                sb.Append($"    {Quote(process)}: [");
-                if (list.Count > 0)
-                    sb.Append('\n');
-
-                for (int i = 0; i < list.Count; i++)
-                {
-                    var bind = list[i];
-                    sb.Append($"        {{ \"key\": {Quote(bind.Key)}");
-                    if (bind.Modifiers is { Count: > 0 } mods)
-                        sb.Append($", \"modifiers\": [{string.Join(", ", mods.Select(Quote))}]");
-                    sb.Append(" }");
-                    sb.Append(i < list.Count - 1 ? ",\n" : "\n");
-                }
-
-                sb.Append(list.Count > 0 ? "    ]" : "]");
-                sb.Append(++processIndex < bindings.Count ? ",\n" : "\n");
-            }
-
-            sb.Append("}\n");
-            return sb.ToString();
-        }
-
-        static string Quote(string value) => JsonSerializer.Serialize(value);
 
         // Turns the config into what the main loop checks. Process names match
         // regardless of case, since Windows file names do too.

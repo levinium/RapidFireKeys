@@ -136,16 +136,19 @@ namespace RapidFireKeys
         }
     }
 
-    // Small log next to the exe, so a misfire can be traced after the fact
+    // Small log beside the settings in %AppData%\RapidFireKeys, so a misfire can be
+    // traced after the fact
     static class Log
     {
-        static readonly string path = Path.Combine(AppContext.BaseDirectory, "RapidFireKeys.log");
+        static readonly string path = Path.Combine(Preferences.Folder, "RapidFireKeys.log");
         static readonly object sync = new();
 
         static Log()
         {
             try
             {
+                Directory.CreateDirectory(Preferences.Folder);
+
                 // Start fresh once the log gets large
                 if (File.Exists(path) && new FileInfo(path).Length > 1_000_000)
                     File.Delete(path);

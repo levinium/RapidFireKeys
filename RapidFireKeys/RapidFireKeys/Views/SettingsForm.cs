@@ -2,15 +2,15 @@ using System.ComponentModel;
 
 namespace RapidFireKeys.Views
 {
-    // Edits CONFIG.json and the app's own settings, so nobody has to open a JSON
-    // file to change which keys rapid-fire.
+    // The one place to change which keys rapid-fire in which apps, and the app's
+    // own settings. Import/Export move all of it to and from a file.
     //
-    // Works on a copy: nothing reaches CONFIG.json or the running app until Save,
-    // and Cancel leaves both exactly as they were.
+    // Works on a copy: nothing reaches the settings file or the running app until
+    // Save, and Cancel leaves both exactly as they were.
     internal sealed class SettingsForm : Form
     {
         // One row in the hotkey grid. Shift/Ctrl/Alt are the modifiers people
-        // actually use; any other modifier a hand-edited CONFIG.json asks for is
+        // actually use; any other modifier an old hand-written CONFIG.json asks for is
         // carried through untouched in Extra rather than dropped on save.
         sealed class HotkeyRow
         {
@@ -47,7 +47,7 @@ namespace RapidFireKeys.Views
         bool saved;
         readonly Label warningLabel = new();
 
-        // The grid stores the CONFIG.json name and shows a friendlier label
+        // The grid stores the key's saved name and shows a friendlier label
         sealed record KeyChoice(string Name, string Label);
 
         static readonly KeyChoice[] keyChoices = Enum.GetValues<Keys>()
@@ -118,7 +118,7 @@ namespace RapidFireKeys.Views
 
         void BuildLayout()
         {
-            // Warning strip, only shown when CONFIG.json could not be read
+            // Warning strip, only shown when the settings file could not be read
             warningLabel.Dock = DockStyle.Top;
             warningLabel.AutoSize = false;
             warningLabel.Height = 40;
@@ -355,6 +355,14 @@ namespace RapidFireKeys.Views
             defaultsButton.Click += (_, _) => RestoreDefaults();
             left.Controls.Add(defaultsButton);
 
+            var importButton = new Button { Text = "Import...", AutoSize = true };
+            importButton.Click += (_, _) => Import();
+            left.Controls.Add(importButton);
+
+            var exportButton = new Button { Text = "Export...", AutoSize = true };
+            exportButton.Click += (_, _) => Export();
+            left.Controls.Add(exportButton);
+
             // Only in builds published with a sponsor link; see SponsorLink
             if (openSponsor != null)
             {
@@ -373,13 +381,10 @@ namespace RapidFireKeys.Views
             var saveButton = new Button { Text = "Save", AutoSize = true, MinimumSize = new Size(80, 0) };
             saveButton.Click += (_, _) => Save();
 
-            var cancelButton = new Button
-            {
-                Text = "Cancel",
-                AutoSize = true,
-                MinimumSize = new Size(80, 0),
-                DialogResult = DialogResult.Cancel,
-            };
+            // Closed explicitly: this window is not modal, and a button's
+            // DialogResult only closes a window opened with ShowDialog
+            var cancelButton = new Button { Text = "Cancel", AutoSize = true, MinimumSize = new Size(80, 0) };
+            cancelButton.Click += (_, _) => Close();
 
             right.Controls.Add(saveButton);
             right.Controls.Add(cancelButton);
@@ -394,14 +399,12 @@ namespace RapidFireKeys.Views
 
         void LoadCurrentConfig()
         {
-            var (bindings, error) = HotkeyConfig.Load();
-            if (error != null)
+            if (preferences.LoadError is { } error)
             {
-                warningLabel.Text = $"CONFIG.json could not be read ({error}). The defaults are shown instead; Save replaces the file.";
+                warningLabel.Text = $"Your saved settings could not be read ({error}). The defaults are shown; Save replaces them.";
                 warningLabel.Visible = true;
-                bindings = HotkeyConfig.Defaults();
             }
-            Populate(bindings);
+            Populate(preferences.Hotkeys);
         }
 
         void Populate(Dictionary<string, List<KeyBinding>> bindings)
@@ -555,8 +558,8 @@ namespace RapidFireKeys.Views
             Populate(HotkeyConfig.Defaults());
         }
 
-        // Rebuilds the CONFIG.json form of what is on screen, or explains why it can't
-        Dictionary<string, List<KeyBinding>>? Collect()
+        // Rebuilds the saved form of what is on screen, or explains why it can't
+        Dictionary<string, List<KeyBinding>>? Collect(string action = "Save")
         {
             grid.EndEdit();
             var result = new Dictionary<string, List<KeyBinding>>();
@@ -573,8 +576,8 @@ namespace RapidFireKeys.Views
                     {
                         appList.SelectedItem = app;
                         SelectRow(app.Hotkeys.IndexOf(row));
-                        MessageBox.Show(this, $"{(HotkeyConfig.TryParseKey(row.Key, out Keys k) ? Describe(k) : row.Key)} is listed twice for {app.Process}. Remove one before saving.",
-                            "Save", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show(this, $"{(HotkeyConfig.TryParseKey(row.Key, out Keys k) ? Describe(k) : row.Key)} is listed twice for {app.Process}. Remove one first.",
+                            action, MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return null;
                     }
 
@@ -598,25 +601,89 @@ namespace RapidFireKeys.Views
             var bindings = Collect();
             if (bindings == null) return;
 
-            try
+            preferences.Hotkeys = bindings;
+            preferences.CheckForUpdatesAutomatically = autoUpdateCheck.Checked;
+            preferences.Theme = (ThemeMode)themeBox.SelectedIndex;
+            if (preferences.Save() is { } error)
             {
-                HotkeyConfig.Save(bindings);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(this, $"CONFIG.json could not be saved: {ex.Message}",
+                MessageBox.Show(this, $"Your settings could not be saved: {error}",
                     "Save", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
-
-            preferences.CheckForUpdatesAutomatically = autoUpdateCheck.Checked;
-            preferences.Theme = (ThemeMode)themeBox.SelectedIndex;
-            preferences.Save();
             saved = true;
 
             applyBindings(bindings);
             DialogResult = DialogResult.OK;
             Close();
+        }
+
+        static string FileFilter => "RapidFireKeys settings (*.json)|*.json|All files (*.*)|*.*";
+
+        // Writes what is on screen, saved or not, so a setup can be backed up or
+        // moved to another PC
+        void Export()
+        {
+            var bindings = Collect("Export");
+            if (bindings == null) return;
+
+            using var dialog = new SaveFileDialog
+            {
+                Title = "Export RapidFireKeys settings",
+                Filter = FileFilter,
+                FileName = "RapidFireKeys settings.json",
+                InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+            };
+            if (dialog.ShowDialog(this) != DialogResult.OK) return;
+
+            try
+            {
+                File.WriteAllText(dialog.FileName,
+                    Preferences.Export(bindings, (ThemeMode)themeBox.SelectedIndex, autoUpdateCheck.Checked));
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"The settings could not be exported: {ex.Message}",
+                    "Export", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        // Loads an exported file, or a CONFIG.json from before 1.1.0, into the
+        // window. Like every other change here, it is kept only if Save is pressed.
+        void Import()
+        {
+            using var dialog = new OpenFileDialog
+            {
+                Title = "Import RapidFireKeys settings",
+                Filter = FileFilter,
+                InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+            };
+            if (dialog.ShowDialog(this) != DialogResult.OK) return;
+
+            Preferences imported;
+            bool hasPreferences;
+            try
+            {
+                (imported, hasPreferences) = Preferences.Import(File.ReadAllText(dialog.FileName));
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"{Path.GetFileName(dialog.FileName)} could not be imported: {ex.Message}",
+                    "Import", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            Populate(imported.Hotkeys);
+            if (hasPreferences)
+            {
+                themeBox.SelectedIndex = (int)imported.Theme;
+                autoUpdateCheck.Checked = imported.CheckForUpdatesAutomatically;
+            }
+            warningLabel.Visible = false;
+
+            int hotkeyCount = imported.Hotkeys.Values.Sum(list => list.Count);
+            MessageBox.Show(this,
+                $"Imported {imported.Hotkeys.Count} app(s) with {hotkeyCount} hotkey(s). Press Save to keep them, or Cancel to discard.",
+                "Import", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
     }
 }

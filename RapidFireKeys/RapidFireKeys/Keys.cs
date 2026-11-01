@@ -3,7 +3,7 @@ namespace RapidFireKeys
     // All standard virtual key codes (partial, expand as needed).
     //
     // Declared in the RapidFireKeys namespace on purpose: inside it, "Keys" means
-    // this enum rather than System.Windows.Forms.Keys. The names are what CONFIG.json
+    // this enum rather than System.Windows.Forms.Keys. The names are what the settings file
     // stores, so renaming one breaks every config that uses it.
     internal enum Keys
     {

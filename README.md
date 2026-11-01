@@ -22,8 +22,9 @@ the key down and it keeps firing until you let go.
 
 Put `RapidFireKeys.exe` in a folder of its own and run it. That is the whole
 installation: it is a single self-contained file with the .NET runtime built in,
-so nothing else needs to be installed. It keeps its settings and log next to the
-exe, so deleting the folder removes it completely. You need 64-bit Windows.
+so nothing else needs to be installed. Settings live in
+`%AppData%\RapidFireKeys`; delete that folder and the exe to remove it
+completely. You need 64-bit Windows.
 
 Windows SmartScreen will warn that the app is unsigned. Choose **More info**
 then **Run anyway**, or read the source and build it yourself. A `.sha256` is
@@ -84,9 +85,11 @@ right.
 - Every hotkey can be changed in place: pick a different key from the list, or
   tick **Needs Shift / Needs Ctrl / Needs Alt**.
 - **Restore defaults** puts back the original D2R setup.
+- **Import... / Export...** move your setup to and from a file (see
+  [Your settings](#your-settings-and-moving-them)).
 
 Nothing changes until you press **Save**, and saving takes effect immediately —
-no restart. A key that is held at the moment you remove it stops firing.
+no restart. **Cancel** discards everything since the window opened. A key that is held at the moment you remove it stops firing.
 
 Supported keys are the mouse buttons (left, right, middle, back, forward),
 letters, the number row, the numpad, F1–F12, arrows, Space, Enter, Tab,
@@ -109,7 +112,7 @@ other software, so automation tools or macros cannot set it off. Rapid-fire
 stops as soon as you let go, release a required modifier, or switch to a
 different window — even another copy of the same game.
 
-A `RapidFireKeys.log` next to the exe records when each rapid-fire starts and
+`%AppData%\RapidFireKeys\RapidFireKeys.log` records when each rapid-fire starts and
 stops, which helps track down a misfire.
 
 ### It keeps itself up to date
@@ -121,7 +124,7 @@ When one has, a notification pops up from the tray icon and **Update to …**
 appears at the top of the tray menu. Click either to see what changed; press
 **Update now** and it downloads the new exe, checks it against the checksum
 GitHub recorded for it, swaps it in and restarts — still elevated, with no
-second UAC prompt. Your CONFIG.json is kept.
+second UAC prompt. Your settings are kept.
 
 A failed update costs nothing but the download: nothing is replaced until the
 new file has been fully downloaded and verified, and a download that does not
@@ -134,7 +137,7 @@ identifier and nothing about your machine, apps or hotkeys — it is a plain
 request for a public file.
 
 > Automatic updates start with 1.1.0. If you are on 1.0.5 or earlier, download
-> 1.1.0 by hand once and replace your old exe; your CONFIG.json is kept.
+> 1.1.0 by hand once and replace your old exe; your CONFIG.json is imported.
 
 ## The defaults
 
@@ -146,40 +149,20 @@ Out of the box, RapidFireKeys rapid-fires these in `D2R.exe`:
 | Right, middle, back and forward mouse buttons | held |
 | Backspace, Q, W, E, R, A, S, D, F, G, H, B | held |
 
-## Editing CONFIG.json by hand
+## Your settings, and moving them
 
-You never need to, but you still can. Settings reads and writes the same
-`CONFIG.json` next to the exe, so a config written for an older version keeps
-working. After editing it, choose **Reload CONFIG.json** from the tray menu.
+Everything RapidFireKeys remembers — apps, hotkeys, theme, the update check —
+is in one file, `%AppData%\RapidFireKeys\settings.json`, beside its log. The
+Settings window is the place to change it.
 
-```json
-{
-    "D2R.exe": [
-        { "key": "LButton", "modifiers": ["Shift"] },
-        { "key": "RButton" },
-        { "key": "Q" }
-    ],
-    "OtherApp.exe": [
-        { "key": "LButton", "modifiers": ["Shift", "Ctrl", "Alt"] }
-    ]
-}
-```
+- **Export...** saves what is on screen to a file of your choosing: a backup,
+  or a way to take your setup to another PC.
+- **Import...** loads an exported file into the window. It also accepts a
+  `CONFIG.json` from RapidFireKeys 1.0.x. As with any other change, nothing is
+  kept until you press **Save**, and **Cancel** discards it.
 
-Key names are the ones below; a bare digit like `"1"` also works for the number
-row. Trailing commas and `//` comments are allowed. If the file cannot be read,
-the tray icon says so and the previous hotkeys stay in effect.
-
-```
-LButton, RButton, MButton, XButton1, XButton2, Back,
-Tab, Enter, Shift, Ctrl, Alt, Pause, CapsLock, Esc, Space, PageUp, PageDown, End, Home, Left, Up, Right, Down, Insert, Delete,
-D0, D1, D2, D3, D4, D5, D6, D7, D8, D9,
-A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z,
-LWin, RWin, Apps, Numpad0 - Numpad9, Multiply, Add, Subtract, Decimal, Divide,
-F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, NumLock, ScrollLock
-```
-
-App settings that are not hotkeys (theme and the update check) live in
-`RapidFireKeys.settings.json`, also next to the exe.
+Upgrading from 1.0.x? On first run, 1.1.0 imports the `CONFIG.json` next to
+the exe automatically. That file is left where it is but no longer used.
 
 ## A word of warning
 
@@ -233,8 +216,8 @@ RapidFireKeys\
 ├── RapidFireKeys\
 │   ├── Form1.cs              Tray icon, menu, and the loop that watches held keys
 │   ├── PhysicalInput.cs      Low-level hooks: which keys are physically held
-│   ├── HotkeyConfig.cs       Reads, writes and compiles CONFIG.json
-│   ├── Preferences.cs        RapidFireKeys.settings.json
+│   ├── HotkeyConfig.cs       Reads and compiles hotkey lists
+│   ├── Preferences.cs        The settings file in %AppData%, import/export, 1.0.x migration
 │   ├── Theme.cs              Light/dark colors for every window and the tray menu
 │   ├── SponsorLink.cs        Where the support button goes, if anywhere
 │   ├── Views\

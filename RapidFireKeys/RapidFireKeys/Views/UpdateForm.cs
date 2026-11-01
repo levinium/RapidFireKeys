@@ -136,7 +136,7 @@ namespace RapidFireKeys.Views
                 case UpdateOutcome.Available:
                     heading.Text = $"Version {verdict.Version} is available";
                     subheading.Text = verdict.CanInstall
-                        ? $"You are running {UpdateService.CurrentVersion}. Update now downloads it, checks it, and restarts RapidFireKeys. Your CONFIG.json is kept."
+                        ? $"You are running {UpdateService.CurrentVersion}. Update now downloads it, checks it, and restarts RapidFireKeys. Your settings are kept."
                         : $"You are running {UpdateService.CurrentVersion}. This release has to be downloaded from its page.";
                     var text = ReleaseNotes.ToPlainText(verdict.Notes);
                     notes.Text = text.Length == 0 ? "No release notes were published for this version." : text;

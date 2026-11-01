@@ -5,8 +5,14 @@
 - **Added a Settings window.** Double-click the tray icon (or choose
   **Settings...** from its menu) to add and remove apps and hotkeys. Add a
   hotkey by pressing the key or clicking the mouse button, and tick Shift, Ctrl
-  or Alt to require a modifier. Saving takes effect immediately. CONFIG.json is
-  still used and can still be edited by hand; the defaults are unchanged.
+  or Alt to require a modifier. Saving takes effect immediately. The default
+  hotkeys are unchanged.
+- **Settings moved to `%AppData%\RapidFireKeys\settings.json`**, together
+  with the log, so the exe's folder holds just the exe. An existing CONFIG.json
+  is imported automatically on first run. The **Reload CONFIG.json** menu item
+  is gone; the Settings window replaces it.
+- **Added Import and Export** to Settings, for backing up a setup or moving it
+  to another PC. Import also accepts a CONFIG.json from 1.0.x.
 - **Added automatic updates.** RapidFireKeys checks for a new release once a
   day, shows the release notes, and can download, verify and install it with
   one click, restarting itself afterwards. The check can be turned off in
@@ -16,14 +22,13 @@
   Settings can force Light or Dark.
 - **Added a Support RapidFireKeys option** to the tray menu and Settings in
   official release builds.
-- A CONFIG.json with a trailing comma or comments is now read instead of
-  silently stopping all rapid-fire. If CONFIG.json cannot be read, the tray icon
-  now says so and the previous hotkeys stay in effect.
-- App names in CONFIG.json now match regardless of capitalization.
-- Reloading CONFIG.json now drops apps that were removed from it, and a key that
-  is removed while held stops firing.
+- An old CONFIG.json with a trailing comma or comments is read correctly; before,
+  it silently stopped all rapid-fire. Unreadable settings now raise a tray warning.
+- App names now match regardless of capitalization.
+- A key removed in Settings while it is held stops firing.
 
-Upgrading: replace RapidFireKeys.exe with this one. Your CONFIG.json is kept.
+Upgrading: replace RapidFireKeys.exe with this one. Your CONFIG.json is
+imported into the new settings file.
 From here on, updates can be installed from inside the app.
 
 ## 1.0.5

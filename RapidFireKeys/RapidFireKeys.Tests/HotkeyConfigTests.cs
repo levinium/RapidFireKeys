@@ -4,9 +4,8 @@ using Xunit;
 namespace RapidFireKeys.Tests;
 
 /// <summary>
-/// CONFIG.json, as read by the app and written by the Settings window. Existing hand-written
-/// configs have to keep working, and a config the Settings window saves has to mean exactly what
-/// was on screen.
+/// The hotkey list: CONFIG.json before 1.1.0, the "hotkeys" entry of the settings file now. Old
+/// hand-written configs have to keep reading the same.
 /// </summary>
 public class HotkeyConfigTests
 {
@@ -45,30 +44,6 @@ public class HotkeyConfigTests
 
         config["D2R.exe"].Count.ShouldBe(2);
         config["OtherApp.exe"][0].Key.ShouldBe("1");
-    }
-
-    [Fact]
-    public void WhatIsSavedReadsBackTheSame()
-    {
-        var original = new Dictionary<string, List<KeyBinding>>
-        {
-            ["D2R.exe"] = new()
-            {
-                new KeyBinding { Key = "LButton", Modifiers = new() { "Shift", "Ctrl" } },
-                new KeyBinding { Key = "Q" },
-            },
-            ["Empty.exe"] = new(),
-            ["Odd \"name\".exe"] = new() { new KeyBinding { Key = "F1" } },
-        };
-
-        var text = HotkeyConfig.Serialize(original);
-        var roundTripped = HotkeyConfig.Parse(text);
-
-        roundTripped.Keys.ShouldBe(original.Keys);
-        roundTripped["D2R.exe"][0].Modifiers.ShouldBe(new[] { "Shift", "Ctrl" });
-        roundTripped["D2R.exe"][1].Modifiers.ShouldBeNull();
-        roundTripped["Empty.exe"].ShouldBeEmpty();
-        roundTripped["Odd \"name\".exe"][0].Key.ShouldBe("F1");
     }
 
     [Fact]

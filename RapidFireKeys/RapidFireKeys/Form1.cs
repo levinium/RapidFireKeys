@@ -236,7 +236,6 @@ namespace RapidFireKeys
             trayMenu.Items.Add(new ToolStripSeparator());
             trayMenu.Items.Add("Disable", null, EnableDisableToggle);
             trayMenu.Items.Add(new ToolStripMenuItem("Settings...", null, (_, _) => OpenSettings()) { Font = new Font("Segoe UI", 9F, FontStyle.Bold) });
-            trayMenu.Items.Add("Reload CONFIG.json", null, LoadConfig);
             trayMenu.Items.Add(new ToolStripSeparator());
             trayMenu.Items.Add(checkUpdatesItem);
 
@@ -340,27 +339,17 @@ namespace RapidFireKeys
             form.ShowDialog(owner);
         }
 
-        private void LoadConfig(object sender, EventArgs e)
+        // Starts using the saved hotkeys. A settings file that could not be read
+        // falls back to the defaults, and says so rather than failing silently.
+        private void LoadConfig()
         {
-            if (LoadConfig())
-                trayIcon.ShowBalloonTip(3000, "RapidFireKeys", "CONFIG.json reloaded.", ToolTipIcon.Info);
-        }
-
-        // Reads CONFIG.json and starts using it. On a bad file the previous bindings
-        // stay in effect, rather than the app silently doing nothing.
-        private bool LoadConfig()
-        {
-            var (bindings, error) = HotkeyConfig.Load();
-            if (error != null)
+            if (preferences.LoadError is { } error)
             {
-                Log.Write($"ERROR: could not read CONFIG.json: {error}");
-                trayIcon.ShowBalloonTip(8000, "CONFIG.json could not be read",
-                    $"{error}\n\nOpen Settings from the tray icon to fix it.", ToolTipIcon.Warning);
-                return false;
+                trayIcon.ShowBalloonTip(8000, "RapidFireKeys settings could not be read",
+                    $"{error}\n\nThe default hotkeys are in use. Open Settings from the tray icon to set them up again.", ToolTipIcon.Warning);
             }
 
-            ApplyBindings(bindings);
-            return true;
+            ApplyBindings(preferences.Hotkeys);
         }
 
         private void ApplyBindings(Dictionary<string, List<KeyBinding>> bindings)
