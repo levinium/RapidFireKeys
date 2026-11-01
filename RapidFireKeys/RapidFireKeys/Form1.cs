@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.Threading;
 using System.Threading.Tasks;
@@ -7,44 +7,15 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.IO;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Windows.Forms.VisualStyles;
 using System.Text;
-using static System.Windows.Forms.AxHost;
+using RapidFireKeys.Updates;
+using RapidFireKeys.Views;
 
 namespace RapidFireKeys
 {
     public partial class Form1 : Form
     {
-        static String version = "1.0.5";
-
-        // CONFIG.json lives next to the exe. Written out on first run if missing.
-        static readonly string configPath = Path.Combine(AppContext.BaseDirectory, "CONFIG.json");
-
-        const string defaultConfig = """
-            {
-                "D2R.exe": [
-                    { "key": "LButton", "modifiers": ["Shift"] },
-                    { "key": "RButton" },
-                    { "key": "MButton"},
-                    { "key": "XButton1"},
-                    { "key": "XButton2"},
-                    { "key": "Back"},
-                    { "key": "Q" },
-                    { "key": "W" },
-                    { "key": "E" },
-                    { "key": "R" },
-                    { "key": "A" },
-                    { "key": "S" },
-                    { "key": "D" },
-                    { "key": "F" },
-                    { "key": "G" },
-                    { "key": "H" },
-                    { "key": "B" }
-                ]
-            }
-            """;
+        static readonly string version = UpdateService.CurrentVersion;
 
         // Import user32.dll methods for interacting with Windows
         [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
@@ -186,55 +157,61 @@ namespace RapidFireKeys
             public DateTime LastRepeat = DateTime.MinValue;
         }
 
-        // All standard virtual key codes (partial, expand as needed)
-        enum Keys
+        // The bindings the main loop is using, and the hold state of each key in them.
+        // Swapped as one object when the config changes, so the loop never sees a new
+        // map paired with an old set of key states.
+        sealed class ActiveBindings
         {
-            LButton = 0x01, RButton = 0x02, MButton = 0x04,
-            XButton1 = 0x05, XButton2 = 0x06,
-            Back = 0x08, Tab = 0x09,
-            Enter = 0x0D, Shift = 0x10, Ctrl = 0x11, Alt = 0x12,
-            Pause = 0x13, CapsLock = 0x14, Esc = 0x1B,
-            Space = 0x20, PageUp = 0x21, PageDown = 0x22, End = 0x23, Home = 0x24,
-            Left = 0x25, Up = 0x26, Right = 0x27, Down = 0x28,
-            Insert = 0x2D, Delete = 0x2E,
-            D0 = 0x30, D1 = 0x31, D2 = 0x32, D3 = 0x33, D4 = 0x34,
-            D5 = 0x35, D6 = 0x36, D7 = 0x37, D8 = 0x38, D9 = 0x39,
-            A = 0x41, B = 0x42, C = 0x43, D = 0x44, E = 0x45,
-            F = 0x46, G = 0x47, H = 0x48, I = 0x49, J = 0x4A,
-            K = 0x4B, L = 0x4C, M = 0x4D, N = 0x4E, O = 0x4F,
-            P = 0x50, Q = 0x51, R = 0x52, S = 0x53, T = 0x54,
-            U = 0x55, V = 0x56, W = 0x57, X = 0x58, Y = 0x59, Z = 0x5A,
-            LWin = 0x5B, RWin = 0x5C, Apps = 0x5D,
-            Numpad0 = 0x60, Numpad1 = 0x61, Numpad2 = 0x62, Numpad3 = 0x63,
-            Numpad4 = 0x64, Numpad5 = 0x65, Numpad6 = 0x66, Numpad7 = 0x67,
-            Numpad8 = 0x68, Numpad9 = 0x69,
-            Multiply = 0x6A, Add = 0x6B, Subtract = 0x6D, Decimal = 0x6E, Divide = 0x6F,
-            F1 = 0x70, F2 = 0x71, F3 = 0x72, F4 = 0x73, F5 = 0x74,
-            F6 = 0x75, F7 = 0x76, F8 = 0x77, F9 = 0x78, F10 = 0x79,
-            F11 = 0x7A, F12 = 0x7B,
-            NumLock = 0x90, ScrollLock = 0x91,
+            public readonly Dictionary<string, List<(Keys key, List<Keys> modifiers)>> Map;
+            public readonly Dictionary<Keys, KeyState> States;
+
+            public ActiveBindings(Dictionary<string, List<(Keys, List<Keys>)>> map, Dictionary<Keys, KeyState> states)
+            {
+                Map = map;
+                States = states;
+            }
         }
 
-        static Dictionary<Keys, KeyState> keyStates = new();
+        static volatile ActiveBindings active = new(new(StringComparer.OrdinalIgnoreCase), new());
 
         static int holdThresholdMs = 100;
         static int repeatIntervalMs = 50;
 
-        static Dictionary<string, List<(Keys key, List<Keys> modifiers)>> finalMap
-            = new Dictionary<string, List<(Keys, List<Keys>)>>();
-
         private NotifyIcon trayIcon;
         private ContextMenuStrip trayMenu;
+        private ToolStripMenuItem updateNoticeItem;
+        private ToolStripMenuItem checkUpdatesItem;
 
-        private bool disabled = false;
+        private volatile bool disabled = false;
+
+        private readonly Preferences preferences = Preferences.Load();
+
+        // The last thing an update check concluded, so clicking the notice does not
+        // have to ask again
+        private UpdateVerdict? lastVerdict;
+
+        // Tray apps stay running for days, so the daily check is re-tried on a timer
+        // rather than only at startup
+        private readonly System.Windows.Forms.Timer updateTimer = new() { Interval = 60 * 60 * 1000 };
+
+        private SettingsForm? settingsForm;
+        private UpdateForm? updateForm;
 
         public Form1()
         {
             InitializeComponent();
+            Theme.Mode = preferences.Theme;
+            Theme.Attach(this);
             InitializeTrayIcon();
             Log.Write($"RapidFireKeys v{version} started");
+            LoadConfig();
             PhysicalInput.Start();
             StartBackgroundTask();
+
+            _ = UpdateInstaller.CleanUpAfterUpdateAsync();
+            updateTimer.Tick += (_, _) => CheckForUpdatesInBackground();
+            updateTimer.Start();
+            CheckForUpdatesInBackground();
         }
 
         private void InitializeTrayIcon()
@@ -244,11 +221,28 @@ namespace RapidFireKeys
             var titleItem = new ToolStripMenuItem("RapidFireKeys v"+version);
             titleItem.Enabled = false; // Make it non-clickable
             titleItem.Font = new Font("Segoe UI", 9F, FontStyle.Bold); // Make it look like a header
-            
+
+            // Hidden until an update check finds a newer release
+            updateNoticeItem = new ToolStripMenuItem("Update available", null, (_, _) => ShowUpdateForm(lastVerdict))
+            {
+                Visible = false,
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+            };
+
+            checkUpdatesItem = new ToolStripMenuItem("Check for Updates", null, (_, _) => CheckForUpdatesNow());
+
             trayMenu.Items.Add(titleItem);
+            trayMenu.Items.Add(updateNoticeItem);
             trayMenu.Items.Add(new ToolStripSeparator());
             trayMenu.Items.Add("Disable", null, EnableDisableToggle);
-            trayMenu.Items.Add("Reload CONFIG.json", null, LoadConfig);
+            trayMenu.Items.Add(new ToolStripMenuItem("Settings...", null, (_, _) => OpenSettings()) { Font = new Font("Segoe UI", 9F, FontStyle.Bold) });
+            trayMenu.Items.Add(new ToolStripSeparator());
+            trayMenu.Items.Add(checkUpdatesItem);
+
+            // Only in builds published with a sponsor link; see SponsorLink
+            if (SponsorLink.IsOffered)
+                trayMenu.Items.Add("♥ Support RapidFireKeys", null, (_, _) => OpenSponsor(null));
+
             trayMenu.Items.Add("About", null, OnOpenClicked);
             trayMenu.Items.Add("Exit", null, OnExitClicked);
 
@@ -261,11 +255,23 @@ namespace RapidFireKeys
                 Visible = true
             };
 
+            Theme.ApplyMenu(trayMenu);
+            Theme.Changed += () =>
+            {
+                if (trayMenu.InvokeRequired) trayMenu.BeginInvoke(() => Theme.ApplyMenu(trayMenu));
+                else Theme.ApplyMenu(trayMenu);
+            };
+
             trayIcon.MouseDoubleClick += TrayIcon_DoubleClick;
+            trayIcon.BalloonTipClicked += (_, _) =>
+            {
+                if (lastVerdict is { IsAvailable: true })
+                    ShowUpdateForm(lastVerdict);
+            };
         }
 
         // The icon is embedded in the exe so the app runs as a single file
-        static Icon LoadTrayIcon()
+        internal static Icon LoadTrayIcon()
         {
             using var stream = typeof(Form1).Assembly.GetManifestResourceStream("rapidfire-icon.ico");
             return stream != null ? new Icon(stream) : SystemIcons.Application;
@@ -289,6 +295,11 @@ namespace RapidFireKeys
 
         private void OnExitClicked(object sender, EventArgs e)
         {
+            ExitApp();
+        }
+
+        private void ExitApp()
+        {
             trayIcon.Visible = false;
             Application.Exit();
         }
@@ -301,91 +312,69 @@ namespace RapidFireKeys
             this.ShowInTaskbar = false;
         }
 
-        private void LoadConfig(object sender, EventArgs e)
+        private void OpenSettings()
         {
-            LoadConfig();
+            if (settingsForm is { IsDisposed: false })
+            {
+                settingsForm.WindowState = FormWindowState.Normal;
+                settingsForm.Activate();
+                return;
+            }
+
+            settingsForm = new SettingsForm(
+                preferences,
+                ApplyBindings,
+                owner => CheckForUpdatesNow(owner),
+                SponsorLink.IsOffered ? owner => OpenSponsor(owner) : null);
+            settingsForm.FormClosed += (_, _) => settingsForm = null;
+            settingsForm.Show();
+            settingsForm.Activate();
         }
 
+        private void OpenSponsor(IWin32Window? owner)
+        {
+            if (SponsorLink.Template is not { } template) return;
+
+            using var form = new SponsorForm(template);
+            form.ShowDialog(owner);
+        }
+
+        // Starts using the saved hotkeys. A settings file that could not be read
+        // falls back to the defaults, and says so rather than failing silently.
         private void LoadConfig()
         {
-            if (!File.Exists(configPath))
+            if (preferences.LoadError is { } error)
             {
-                try
-                {
-                    File.WriteAllText(configPath, defaultConfig);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Could not create {configPath}: {ex.Message}");
-                    return;
-                }
+                trayIcon.ShowBalloonTip(8000, "RapidFireKeys settings could not be read",
+                    $"{error}\n\nThe default hotkeys are in use. Open Settings from the tray icon to set them up again.", ToolTipIcon.Warning);
             }
 
-            string json = File.ReadAllText(configPath);
-            var bindings = JsonSerializer.Deserialize<Dictionary<string, List<KeyBinding>>>(json);
+            ApplyBindings(preferences.Hotkeys);
+        }
 
-            foreach (var process in bindings)
-            {
-                var keyList = new List<(Keys, List<Keys>)>();
+        private void ApplyBindings(Dictionary<string, List<KeyBinding>> bindings)
+        {
+            var map = HotkeyConfig.Compile(bindings, Log.Write);
 
-                foreach (var bind in process.Value)
-                {
-                    //Console.WriteLine($"Trying to parse key: '{NormalizeKeyName(bind.Key)}'");
-                    if (Enum.TryParse<Keys>(NormalizeKeyName(bind.Key), true, out Keys mainKey))
-                    {
-                        List<Keys> modifierKeys = new();
-                        if (bind.Modifiers != null)
-                        {
-                            foreach (var mod in bind.Modifiers)
-                            {
-                                if (Enum.TryParse<Keys>(NormalizeKeyName(mod), true, out Keys modKey))
-                                {
-                                    modifierKeys.Add(modKey);
-                                }
-                                else
-                                {
-                                    Console.WriteLine($"Invalid modifier: {mod}");
-                                }
-                            }
-                        }
-
-                        keyList.Add((mainKey, modifierKeys));
-                    }
-                    else
-                    {
-                        Console.WriteLine($"Invalid key: {bind.Key}");
-                    }
-                }
-
-                finalMap[process.Key] = keyList;
-            }
-
-            // 🧪 Print for testing
-            foreach (var (proc, keys) in finalMap)
-            {
-                Console.WriteLine($"\nProcess: {proc}");
-                foreach (var (key, mods) in keys)
-                {
-                    Console.WriteLine($"  Key: {key}, Modifiers: {(mods.Count > 0 ? string.Join("+", mods) : "None")}");
-                }
-            }
-
-
-
-            // Initialize key states
-            //foreach (var key in keysToMonitor)
-            //    keyStates[key] = new KeyState();
-
-            //Initialize key states from the JSON
-            foreach (var process in finalMap)
+            // Keys that stay bound keep their state, so a key being held right now
+            // does not start a second repeat when the config is saved
+            var previous = active.States;
+            var states = new Dictionary<Keys, KeyState>();
+            foreach (var process in map)
             {
                 foreach (var (key, modifiers) in process.Value)
                 {
-                    if (!keyStates.ContainsKey(key))
-                    {
-                        keyStates[key] = new KeyState();
-                    }
+                    if (!states.ContainsKey(key))
+                        states[key] = previous.TryGetValue(key, out var state) ? state : new KeyState();
                 }
+            }
+
+            active = new ActiveBindings(map, states);
+
+            foreach (var (proc, keys) in map)
+            {
+                Log.Write($"Loaded {proc}: " + string.Join(", ", keys.Select(k =>
+                    k.modifiers.Count > 0 ? $"{string.Join("+", k.modifiers)}+{k.key}" : k.key.ToString())));
             }
         }
 
@@ -393,10 +382,6 @@ namespace RapidFireKeys
         {
             Task.Run(() =>
             {
-                LoadConfig();
-
-                Console.WriteLine("\n\nMonitoring and rapidly repeat-pressing held keys while target processes are in focus.\n\nThis console window must remain open for the program to continue running.");
-
                 // Main loop
                 while (true)
                 {
@@ -408,20 +393,20 @@ namespace RapidFireKeys
                     }
                     string activeProcess = GetForegroundProcessName();
 
-                    var procBindings = GetKeyBindingsForProcess(activeProcess);
+                    var current = active;
+                    current.Map.TryGetValue(activeProcess, out var procBindings);
 
                     if (procBindings != null)
                     {
                         foreach (var (key, modifiers) in procBindings)
                         {
                             bool isDown = IsKeyDown(key);
-                            var state = keyStates[key];
+                            var state = current.States[key];
 
                             if (isDown)
                             {
                                 if (!state.IsHeld)
                                 {
-                                    //Console.WriteLine($"Key {key} is held");
                                     state.IsHeld = true;
                                     state.HoldStart = DateTime.Now;
                                 }
@@ -446,13 +431,14 @@ namespace RapidFireKeys
                                         // the same game, so repeats never carry over into a different window
                                         IntPtr startWindow = GetForegroundWindow();
                                         Log.Write($"Repeat {key} started in {activeProcess} (window {startWindow})");
-                                        _ = StartRepeatingKey(key, repeatIntervalMs, () =>
+                                        _ = StartRepeatingKey(key, state, repeatIntervalMs, () =>
                                         {
                                             string? reason =
                                                 !IsKeyDown(key) ? "released" :
                                                 GetForegroundWindow() != startWindow ? "window changed" :
                                                 !AreModifiersDown(modifiers) ? "modifier released" :
-                                                disabled ? "disabled" : null;
+                                                disabled ? "disabled" :
+                                                !IsStillBound(activeProcess, key) ? "removed from config" : null;
                                             if (reason != null)
                                                 Log.Write($"Repeat {key} stopped: {reason}");
                                             return reason != null;
@@ -470,7 +456,7 @@ namespace RapidFireKeys
                     else
                     {
                         // If not in target process, reset all key states
-                        foreach (var state in keyStates.Values)
+                        foreach (var state in current.States.Values)
                         {
                             state.IsHeld = false;
                             state.IsRepeating = false;
@@ -480,6 +466,87 @@ namespace RapidFireKeys
                     Thread.Sleep(10); // Keeps CPU usage low
                 }
             });
+        }
+
+        // Whether a repeating key is still in the config, so saving Settings with a
+        // key removed stops it even while it is held
+        static bool IsStillBound(string processName, Keys key)
+        {
+            return active.Map.TryGetValue(processName, out var bindings)
+                && bindings.Exists(b => b.key == key);
+        }
+
+        //---------- Updates -----------
+
+        // Looks for a newer release, at most once a day, and says nothing unless it
+        // finds one. Fire-and-forget: a failure is indistinguishable from "no update"
+        // to the user, and rapid-fire must never wait on it.
+        private async void CheckForUpdatesInBackground()
+        {
+            if (!UpdateService.IsAvailable) return;
+            if (!preferences.CheckForUpdatesAutomatically) return;
+            if (!UpdateSchedule.IsDue(preferences.LastUpdateCheckUtc, DateTimeOffset.UtcNow)) return;
+
+            var verdict = await new UpdateService().CheckAsync();
+            lastVerdict = verdict;
+
+            // Only a completed check resets the clock. Recording the attempt when the
+            // machine was offline would mean a PC started briefly each day never checks.
+            if (verdict.Outcome != UpdateOutcome.Unknown)
+            {
+                preferences.LastUpdateCheckUtc = DateTimeOffset.UtcNow;
+                preferences.Save();
+            }
+
+            if (!verdict.IsAvailable) return;
+
+            ShowUpdateNotice(verdict);
+            Log.Write($"Version {verdict.Version} is available");
+            trayIcon.ShowBalloonTip(10000, $"RapidFireKeys {verdict.Version} is available",
+                "Click here to see what's new and update.", ToolTipIcon.Info);
+        }
+
+        private void ShowUpdateNotice(UpdateVerdict verdict)
+        {
+            updateNoticeItem.Text = $"Update to {verdict.Version}...";
+            updateNoticeItem.Visible = true;
+        }
+
+        // Asks now, whatever the schedule says, and reports whatever it finds —
+        // including "up to date", which is what someone who asked wants to hear
+        private async void CheckForUpdatesNow(IWin32Window? owner = null)
+        {
+            if (!UpdateService.IsAvailable)
+            {
+                MessageBox.Show(owner, "This build was made without a release feed, so it cannot check for updates.",
+                    "Check for Updates", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            checkUpdatesItem.Enabled = false;
+            try
+            {
+                var verdict = await new UpdateService().CheckAsync();
+                lastVerdict = verdict;
+                if (verdict.IsAvailable)
+                    ShowUpdateNotice(verdict);
+                ShowUpdateForm(verdict);
+            }
+            finally
+            {
+                checkUpdatesItem.Enabled = true;
+            }
+        }
+
+        private void ShowUpdateForm(UpdateVerdict? verdict)
+        {
+            if (verdict is not { } v) return;
+
+            updateForm?.Close();
+            updateForm = new UpdateForm(v, ExitApp);
+            updateForm.FormClosed += (_, _) => updateForm = null;
+            updateForm.Show();
+            updateForm.Activate();
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
@@ -638,30 +705,6 @@ namespace RapidFireKeys
             return true;
         }
 
-        static bool IsAKeyboardKeyRecentlyRepeated()
-        {
-            foreach (var key in keyStates)
-            {
-                var lastRepeatMs = (DateTime.Now - key.Value.LastRepeat).TotalMilliseconds;
-                if (!IsMouseKey(key.Key) && key.Value.IsRepeating || lastRepeatMs < holdThresholdMs)
-                    return true;
-            }
-
-            return false;
-        }
-
-        static bool IsAMouseKeyRecentlyRepeated()
-        {
-            foreach (var key in keyStates)
-            {
-                var lastRepeatMs = (DateTime.Now - key.Value.LastRepeat).TotalMilliseconds;
-                if (IsMouseKey(key.Key) && key.Value.IsRepeating || lastRepeatMs < holdThresholdMs)
-                    return true;
-            }
-
-            return false;
-        }
-
         // Gets the name of the currently focused process
         static string GetForegroundProcessName()
         {
@@ -678,23 +721,16 @@ namespace RapidFireKeys
         }
 
         // Continuously sends key input while the key is still down and the process is in focus
-        static async Task StartRepeatingKey(Keys key, int intervalMs, Func<bool> stopCondition)
+        static async Task StartRepeatingKey(Keys key, KeyState state, int intervalMs, Func<bool> stopCondition)
         {
             await Task.Delay(holdThresholdMs);
             while (!stopCondition())
             {
-                //if (!IsMouseKey(key) && !IsAMouseKeyRecentlyRepeated())
-                //{
-                //    SendKey(key);
-                //}
-                //else if (IsMouseKey(key) && !IsAKeyboardKeyRecentlyRepeated())
-                //{
-                //    SendKey(key);
-                //}
                 // Split each interval evenly between holding the key down and releasing
                 // it, so the game sees both states and the repeat rate stays the same.
                 int holdMs = intervalMs / 2;
                 await SendKey(key, holdMs);
+                state.LastRepeat = DateTime.Now;
                 await Task.Delay(intervalMs - holdMs);
             }
         }
@@ -710,8 +746,6 @@ namespace RapidFireKeys
             {
                 await SendStealthKeyPress(key, holdMs);
             }
-            KeyState state = keyStates[key];
-            state.LastRepeat = DateTime.Now;
         }
 
         static bool IsMouseKey(Keys key)
@@ -719,46 +753,10 @@ namespace RapidFireKeys
             return key == Keys.LButton || key == Keys.RButton || key == Keys.MButton || key == Keys.XButton1 || key == Keys.XButton2;
         }
 
-        static List<(Keys key, List<Keys> modifiers)>? GetKeyBindingsForProcess(string processName)
-        {
-            if (finalMap.TryGetValue(processName, out var bindings))
-            {
-                return bindings;
-            }
-
-            return null;
-        }
-
-
-        static string NormalizeKeyName(string keyName)
-        {
-            if (string.IsNullOrWhiteSpace(keyName)) return "";
-
-            keyName = keyName.Trim(); // ← Strip any leading/trailing whitespace
-
-            // Normalize digits ("1" → "D1") but ignore already-normal keys
-            return (keyName.Length == 1 && char.IsDigit(keyName[0]))
-                ? $"D{keyName}"
-                : keyName;
-        }
-
-        class KeyBinding
-        {
-            [JsonPropertyName("key")]
-            public string Key { get; set; }
-
-            [JsonPropertyName("modifiers")]
-            public List<string> Modifiers { get; set; }
-        }
-
         private void TrayIcon_DoubleClick(object? sender, MouseEventArgs e)
         {
             if (e.Button == MouseButtons.Left)
-            {
-                this.Show();
-                this.WindowState = FormWindowState.Normal;
-                this.ShowInTaskbar = true;
-            }
+                OpenSettings();
         }
 
         private void Form1_Load(object sender, EventArgs e)

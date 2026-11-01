@@ -1,0 +1,82 @@
+# Publish a release when a version tag is pushed.
+#
+#   git tag v1.1.0 && git push origin v1.1.0
+#
+# Releases are built here rather than on a developer's machine, so the exe
+# people download is demonstrably the one this repository produced. The
+# workflow logs are public and the tag names the exact commit.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '8.0.x'
+
+      # Checked rather than trusted: a mismatch would publish one version as a
+      # binary reporting another, and the updater would offer it forever.
+      - name: Check the tag matches the version in the build
+        shell: pwsh
+        run: |
+          $csproj = 'RapidFireKeys/RapidFireKeys/RapidFireKeys.csproj'
+          $version = ([xml](Get-Content $csproj)).Project.PropertyGroup.Version |
+                     Where-Object { $_ } | Select-Object -First 1
+
+          $tag = "${{ github.ref_name }}" -replace '^v', ''
+
+          if ($version -ne $tag) {
+            throw "Tag $tag does not match <Version> $version. Bump the csproj, or retag."
+          }
+
+          Write-Host "Version $version matches the tag."
+
+      # SponsorUrl comes from a repository variable, so the official release
+      # carries the support menu item and a fork building from this same
+      # workflow does not. Unset, the item does not appear at all.
+      - name: Publish
+        shell: pwsh
+        run: |
+          $sponsor = "${{ vars.SPONSOR_URL }}"
+
+          if ($sponsor) {
+            ./publish.ps1 -SponsorUrl $sponsor
+          } else {
+            ./publish.ps1
+          }
+
+      # The binary is not code-signed, so a checksum published beside it is the
+      # one thing that lets a cautious person confirm they got the file this
+      # workflow built. (The in-app updater checks GitHub's own recorded digest.)
+      - name: Checksum
+        shell: pwsh
+        run: |
+          $exe = Get-Item dist/RapidFireKeys.exe
+          $hash = (Get-FileHash $exe.FullName -Algorithm SHA256).Hash
+          "$hash  $($exe.Name)" | Out-File -FilePath "$($exe.FullName).sha256" -Encoding ascii
+
+          Write-Host "$($exe.Name)  SHA256: $hash"
+
+      # A draft, so the artifacts can be looked at before anybody can download
+      # them - or be offered them by the updater, which ignores drafts.
+      # Publishing is a second, separate, deliberate action.
+      - name: Create the release
+        uses: softprops/action-gh-release@v3
+        with:
+          name: RapidFireKeys ${{ github.ref_name }}
+          draft: true
+          generate_release_notes: true
+          files: |
+            dist/RapidFireKeys.exe
+            dist/RapidFireKeys.exe.sha256

@@ -8,7 +8,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon>rapidfire-icon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Version>1.0.5</Version>
+    <Version>1.1.0</Version>
   </PropertyGroup>
 
   <!-- Release builds ship as one self-contained exe with the .NET runtime built in -->
@@ -19,6 +19,49 @@
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
   </PropertyGroup>
+
+  <!--
+    Where the "Support RapidFireKeys" menu item sends people.
+
+    A funding handle is not a secret, but it identifies a person, and a fork
+    built from source must not quietly solicit donations to whoever wrote the
+    code. Left empty, as it is here, the app has no support menu item at all.
+
+    Set it only when publishing a release:
+
+      .\publish.ps1 -SponsorUrl "https://github.com/sponsors/<user>?frequency=one-time&amount={amount}"
+
+    An {amount} placeholder turns the ask into a picker; without it the ask is
+    a single button. See SponsorLink.
+  -->
+  <PropertyGroup>
+    <SponsorUrl></SponsorUrl>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(SponsorUrl)' != ''">
+    <AssemblyMetadata Include="SponsorUrl" Value="$(SponsorUrl)" />
+  </ItemGroup>
+
+  <!--
+    Where the app looks to see whether a newer release exists.
+
+    Unlike SponsorUrl this has a default: a feed left out by accident is a
+    silent failure, the app simply never mentions a release again. A fork
+    should point these at its own releases or blank them.
+  -->
+  <PropertyGroup>
+    <UpdateFeedUrl Condition="'$(UpdateFeedUrl)' == ''">https://api.github.com/repos/levinium/RapidFireKeys/releases/latest</UpdateFeedUrl>
+    <UpdatePageUrl Condition="'$(UpdatePageUrl)' == ''">https://github.com/levinium/RapidFireKeys/releases/latest</UpdatePageUrl>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(UpdateFeedUrl)' != ''">
+    <AssemblyMetadata Include="UpdateFeedUrl" Value="$(UpdateFeedUrl)" />
+    <AssemblyMetadata Include="UpdatePageUrl" Value="$(UpdatePageUrl)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="RapidFireKeys.Tests" />
+  </ItemGroup>
 
   <ItemGroup>
     <None Remove="Assets\rapidfire-icon.ico" />
@@ -44,4 +87,4 @@
     </EmbeddedResource>
   </ItemGroup>
 
-</Project>
+</Project>

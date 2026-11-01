@@ -1,0 +1,23 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+
+# Visual Studio / Rider / VS Code workspace state
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Publish artifacts
+publish/
+dist/
+
+# Logs and crash dumps
+*.log
+*.dmp
+
+# NuGet
+*.nupkg
+packages/
