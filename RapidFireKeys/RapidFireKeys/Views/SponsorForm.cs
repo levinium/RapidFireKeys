@@ -96,7 +96,7 @@ namespace RapidFireKeys.Views
             AcceptButton = sponsorButton;
             CancelButton = notNow;
 
-            UpdateChoice(null, EventArgs.Empty);
+            Theme.Attach(this, () => UpdateChoice(null, EventArgs.Empty));
         }
 
         static Label Paragraph(string text) => new()
@@ -163,7 +163,7 @@ namespace RapidFireKeys.Views
         {
             otherAmount.Visible = otherChip.Checked;
             foreach (var chip in chips.Append(otherChip))
-                chip.ForeColor = chip.Checked ? accent : SystemColors.ControlText;
+                chip.ForeColor = chip.Checked ? Theme.ForText(accent) : Theme.Text;
 
             sponsorButton.Text = Chosen is { } amount
                 ? $"Sponsor {SponsorLink.Describe(amount)}"

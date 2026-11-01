@@ -21,6 +21,11 @@ namespace RapidFireKeys
         // Left untouched by a manual check.
         public DateTimeOffset? LastUpdateCheckUtc { get; set; }
 
+        // Light or dark windows. System follows Windows' own app mode, including
+        // when it changes while RapidFireKeys is running.
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
+        public ThemeMode Theme { get; set; } = ThemeMode.System;
+
         public static Preferences Load()
         {
             try

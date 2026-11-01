@@ -87,6 +87,8 @@ namespace RapidFireKeys.Views
             Controls.Add(targetHolder);
             Controls.Add(heading);
             Controls.Add(footer);
+
+            Theme.Attach(this);
         }
 
         // Every key goes through here first, including Tab, Enter, Esc and the

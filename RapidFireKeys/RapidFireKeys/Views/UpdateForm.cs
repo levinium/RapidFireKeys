@@ -44,6 +44,7 @@ namespace RapidFireKeys.Views
 
             BuildLayout();
             Render();
+            Theme.Attach(this);
         }
 
         // Focus would otherwise land in the notes, which selects all of their text

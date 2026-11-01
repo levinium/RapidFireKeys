@@ -93,6 +93,15 @@ letters, the number row, the numpad, F1–F12, arrows, Space, Enter, Tab,
 Backspace, Escape, Insert/Delete/Home/End/Page Up/Page Down, and Shift, Ctrl
 and Alt themselves. Not every key has been tested in every game.
 
+### Light or dark, following Windows
+
+![Settings in dark mode](docs/screenshots/settings-dark.png)
+
+Every window and the tray menu come in light and dark. By default RapidFireKeys
+follows Windows' own app setting (Settings → Personalization → Colors), and
+switches along with it while running. **Theme** in Settings can pin it to Light
+or Dark instead; the choice previews immediately and Cancel puts it back.
+
 ### It only fires keys you are physically holding
 
 RapidFireKeys watches your real keyboard and mouse and ignores input sent by
@@ -169,7 +178,7 @@ LWin, RWin, Apps, Numpad0 - Numpad9, Multiply, Add, Subtract, Decimal, Divide,
 F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, NumLock, ScrollLock
 ```
 
-App settings that are not hotkeys (the update check) live in
+App settings that are not hotkeys (theme and the update check) live in
 `RapidFireKeys.settings.json`, also next to the exe.
 
 ## A word of warning
@@ -226,6 +235,7 @@ RapidFireKeys\
 │   ├── PhysicalInput.cs      Low-level hooks: which keys are physically held
 │   ├── HotkeyConfig.cs       Reads, writes and compiles CONFIG.json
 │   ├── Preferences.cs        RapidFireKeys.settings.json
+│   ├── Theme.cs              Light/dark colors for every window and the tray menu
 │   ├── SponsorLink.cs        Where the support button goes, if anywhere
 │   ├── Views\
 │   │   ├── SettingsForm.cs   Apps and hotkeys editor

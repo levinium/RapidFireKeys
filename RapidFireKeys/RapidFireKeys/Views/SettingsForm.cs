@@ -37,12 +37,14 @@ namespace RapidFireKeys.Views
 
         readonly ListBox appList = new();
         readonly DataGridView grid = new();
-        readonly GroupBox hotkeyGroup = new();
+        readonly GroupBox hotkeyGroup = new ThemedGroupBox();
         readonly Label hotkeyHint = new();
         readonly Button removeAppButton = new();
         readonly Button addHotkeyButton = new();
         readonly Button removeHotkeyButton = new();
         readonly CheckBox autoUpdateCheck = new();
+        readonly ComboBox themeBox = new();
+        bool saved;
         readonly Label warningLabel = new();
 
         // The grid stores the CONFIG.json name and shows a friendlier label
@@ -96,6 +98,7 @@ namespace RapidFireKeys.Views
             ShowInTaskbar = true;
 
             BuildLayout();
+            Theme.Attach(this);
         }
 
         // Loaded here rather than in the constructor: the app list is data-bound,
@@ -104,6 +107,13 @@ namespace RapidFireKeys.Views
         {
             base.OnLoad(e);
             LoadCurrentConfig();
+        }
+
+        // A theme previewed but not saved goes back to the saved one
+        protected override void OnFormClosed(FormClosedEventArgs e)
+        {
+            if (!saved) Theme.Mode = preferences.Theme;
+            base.OnFormClosed(e);
         }
 
         void BuildLayout()
@@ -132,9 +142,9 @@ namespace RapidFireKeys.Views
             body.Controls.Add(BuildAppsGroup(), 0, 0);
             body.Controls.Add(BuildHotkeysGroup(), 1, 0);
 
-            var updatesGroup = BuildUpdatesGroup();
-            body.Controls.Add(updatesGroup, 0, 1);
-            body.SetColumnSpan(updatesGroup, 2);
+            var generalGroup = BuildGeneralGroup();
+            body.Controls.Add(generalGroup, 0, 1);
+            body.SetColumnSpan(generalGroup, 2);
 
             Controls.Add(body);
             Controls.Add(warningLabel);
@@ -143,7 +153,7 @@ namespace RapidFireKeys.Views
 
         GroupBox BuildAppsGroup()
         {
-            var group = new GroupBox { Text = "Apps", Dock = DockStyle.Fill, Padding = new Padding(8) };
+            var group = new ThemedGroupBox { Text = "Apps", Dock = DockStyle.Fill, Padding = new Padding(8) };
 
             appList.Dock = DockStyle.Fill;
             appList.IntegralHeight = false;
@@ -267,17 +277,38 @@ namespace RapidFireKeys.Views
             FillWeight = 70,
         };
 
-        GroupBox BuildUpdatesGroup()
+        GroupBox BuildGeneralGroup()
         {
-            var group = new GroupBox
+            var group = new ThemedGroupBox
             {
-                Text = "Updates",
+                Text = "General",
                 Dock = DockStyle.Fill,
                 AutoSize = true,
                 Padding = new Padding(8, 4, 8, 8),
             };
 
-            var row = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = false };
+            var rows = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                AutoSize = true,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+            };
+
+            var themeRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0) };
+            var themeLabel = new Label { Text = "Theme:", AutoSize = true, Margin = new Padding(3, 7, 6, 3) };
+
+            themeBox.DropDownStyle = ComboBoxStyle.DropDownList;
+            themeBox.Items.AddRange(new object[] { "Match Windows", "Light", "Dark" });
+            themeBox.SelectedIndex = (int)preferences.Theme;
+            themeBox.Width = 140;
+            // Previewed as soon as it is picked; Cancel puts the saved theme back
+            themeBox.SelectedIndexChanged += (_, _) => Theme.Mode = (ThemeMode)themeBox.SelectedIndex;
+
+            themeRow.Controls.Add(themeLabel);
+            themeRow.Controls.Add(themeBox);
+
+            var row = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0) };
 
             autoUpdateCheck.Text = "Check for updates automatically (once a day)";
             autoUpdateCheck.AutoSize = true;
@@ -299,7 +330,9 @@ namespace RapidFireKeys.Views
             row.Controls.Add(autoUpdateCheck);
             row.Controls.Add(checkNow);
             row.Controls.Add(version);
-            group.Controls.Add(row);
+            rows.Controls.Add(themeRow);
+            rows.Controls.Add(row);
+            group.Controls.Add(rows);
             return group;
         }
 
@@ -577,7 +610,9 @@ namespace RapidFireKeys.Views
             }
 
             preferences.CheckForUpdatesAutomatically = autoUpdateCheck.Checked;
+            preferences.Theme = (ThemeMode)themeBox.SelectedIndex;
             preferences.Save();
+            saved = true;
 
             applyBindings(bindings);
             DialogResult = DialogResult.OK;

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.Threading;
 using System.Threading.Tasks;
@@ -200,6 +200,8 @@ namespace RapidFireKeys
         public Form1()
         {
             InitializeComponent();
+            Theme.Mode = preferences.Theme;
+            Theme.Attach(this);
             InitializeTrayIcon();
             Log.Write($"RapidFireKeys v{version} started");
             LoadConfig();
@@ -252,6 +254,13 @@ namespace RapidFireKeys
                 Text = "RapidFireKeys",
                 ContextMenuStrip = trayMenu,
                 Visible = true
+            };
+
+            Theme.ApplyMenu(trayMenu);
+            Theme.Changed += () =>
+            {
+                if (trayMenu.InvokeRequired) trayMenu.BeginInvoke(() => Theme.ApplyMenu(trayMenu));
+                else Theme.ApplyMenu(trayMenu);
             };
 
             trayIcon.MouseDoubleClick += TrayIcon_DoubleClick;

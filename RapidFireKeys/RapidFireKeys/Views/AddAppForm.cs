@@ -65,6 +65,8 @@ namespace RapidFireKeys.Views
             layout.Controls.Add(processBox);
             Controls.Add(layout);
             Controls.Add(buttons);
+
+            Theme.Attach(this);
         }
 
         // Programs with a visible window: the ones a person could be playing.

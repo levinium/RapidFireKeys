@@ -11,6 +11,9 @@
   day, shows the release notes, and can download, verify and install it with
   one click, restarting itself afterwards. The check can be turned off in
   Settings, and **Check for Updates** is in the tray menu.
+- **Added dark mode.** Windows and the tray menu follow Windows' light/dark
+  app setting by default, including when it changes while running; **Theme** in
+  Settings can force Light or Dark.
 - **Added a Support RapidFireKeys option** to the tray menu and Settings in
   official release builds.
 - A CONFIG.json with a trailing comma or comments is now read instead of
