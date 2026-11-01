@@ -1,0 +1,31 @@
+# Build and test every push and pull request.
+#
+# Windows only, because the app targets net8.0-windows: it uses WinForms, which
+# does not build anywhere else.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore RapidFireKeys/RapidFireKeys.sln
+
+      - name: Build
+        run: dotnet build RapidFireKeys/RapidFireKeys.sln --no-restore -c Release
+
+      - name: Test
+        run: dotnet test RapidFireKeys/RapidFireKeys.sln --no-build -c Release --verbosity normal

@@ -43,7 +43,7 @@
             label1.Name = "label1";
             label1.Size = new Size(656, 21);
             label1.TabIndex = 0;
-            label1.Text = "Edit CONFIG.json in the application folder to customize what keys will rapid fire for what apps";
+            label1.Text = "Double-click the tray icon, or right-click it and choose Settings, to pick which keys rapid-fire in which apps.";
             label1.Click += label1_Click;
             // 
             // label2
@@ -54,7 +54,7 @@
             label2.Name = "label2";
             label2.Size = new Size(434, 21);
             label2.TabIndex = 1;
-            label2.Text = "See readme.txt in the application folder for more information.";
+            label2.Text = "Hold a configured key in one of those apps and RapidFireKeys presses it repeatedly for you.";
             label2.Click += label2_Click;
             // 
             // label3
